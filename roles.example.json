@@ -1,0 +1,5 @@
+[
+ {"id": "user",     "name": "пользователь", "enabled": true},
+ {"id": "reviewer", "name": "проверяющий",  "enabled": true},
+ {"id": "admin",    "name": "администратор", "enabled": false}
+]

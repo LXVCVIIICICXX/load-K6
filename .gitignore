@@ -4,6 +4,7 @@
 secrets.json
 secrets.json.tmp
 users.json
+roles.json
 accounts.json
 pool.json
 requests.json

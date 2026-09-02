@@ -61,7 +61,7 @@ fi
 
 sec "4. Локальные настройки"
 [ -f .env ] && ok ".env уже есть — не трогаю" || { cp .env.example .env && ok ".env создан из .env.example"; }
-for f in accounts users pool requests; do
+for f in accounts users roles pool requests; do
   if [ -f "$f.json" ]; then ok "$f.json уже есть"
   else cp "$f.example.json" "$f.json" && ok "$f.json создан из примера"; fi
 done

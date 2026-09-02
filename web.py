@@ -206,6 +206,35 @@ def load_users():
 def save_users(lst):
     json.dump(lst,open(USERS,'w',encoding='utf-8'),ensure_ascii=False,indent=1)
 
+
+# ---------- Роли ----------
+# Роль — это группа профилей и одновременно префикс переменных. Список ролей
+# заводит человек: инструмент не знает, как называются права на его сайте.
+# Выключенная роль целиком выпадает из прогонов — удобнее, чем гасить профили
+# по одному, когда надо «сегодня без администраторов».
+ROLES=os.path.join(SL,'roles.json')
+
+def load_roles():
+    try: got=json.load(open(ROLES,encoding='utf-8'))
+    except Exception: got=[]
+    known={r.get('id') for r in got if isinstance(r,dict)}
+    # Роль, которая есть у профиля, но не заведена в файле, показываем всё
+    # равно: иначе профиль потерялся бы из таблицы вместе со своей группой.
+    for u in load_users():
+        r=(u.get('role') or '').strip()
+        if r and r not in known:
+            got.append({'id':r,'name':r,'enabled':True}); known.add(r)
+    return got
+
+def save_roles(lst):
+    json.dump(lst,open(ROLES,'w',encoding='utf-8'),ensure_ascii=False,indent=1)
+
+def role_on(role):
+    """Включена ли группа. Незаведённая роль считается включённой."""
+    for r in load_roles():
+        if r.get('id')==role: return bool(r.get('enabled',True))
+    return True
+
 # ---------- Настройки внешних систем (Beszel, Telescope) ----------
 # Лежат отдельно от кода в secrets.json и не попадают ни в репозиторий
 # (см. .gitignore), ни обратно в браузер: наружу отдаётся только признак
@@ -402,7 +431,8 @@ def creds_env(env):
     # Сценарии не знают карты стенда: id приходят из pool.json.
     config.pool_env(env)
 
-    users=[u for u in load_users() if u.get('enabled')]
+    # Профиль идёт в прогон, только если включён он сам И включена его группа.
+    users=[u for u in load_users() if u.get('enabled') and role_on(u.get('role') or '')]
     if not users: return env
 
     pool=[{'email':u['email'],'password':u['password'],'role':u.get('role') or '',
@@ -892,6 +922,7 @@ class H(BaseHTTPRequestHandler):
                     'log':list(STATE['log'])[-200:]},ensure_ascii=False))
         if p=='/api/reports': return self._send(200,json.dumps(reports(),ensure_ascii=False))
         if p=='/api/users': return self._send(200,json.dumps(load_users(),ensure_ascii=False))
+        if p=='/api/roles': return self._send(200,json.dumps(load_roles(),ensure_ascii=False))
         if p=='/api/settings': return self._send(200,json.dumps(public_secrets(),ensure_ascii=False))
         if p=='/api/har': return self._send(200,json.dumps(har_list(),ensure_ascii=False))
         if p=='/api/scenarios': return self._send(200,json.dumps(scenarios(),ensure_ascii=False))
@@ -932,6 +963,14 @@ class H(BaseHTTPRequestHandler):
             try:
                 lst=json.loads(self.rfile.read(n) or b'[]')
                 save_users(lst)
+                return self._send(200,json.dumps({'ok':True,'n':len(lst)},ensure_ascii=False))
+            except Exception as e:
+                return self._send(400,json.dumps({'error':str(e)[:200]},ensure_ascii=False))
+        if self.path=='/api/roles':
+            n=int(self.headers.get('Content-Length',0))
+            try:
+                lst=json.loads(self.rfile.read(n) or b'[]')
+                save_roles(lst)
                 return self._send(200,json.dumps({'ok':True,'n':len(lst)},ensure_ascii=False))
             except Exception as e:
                 return self._send(400,json.dumps({'error':str(e)[:200]},ensure_ascii=False))

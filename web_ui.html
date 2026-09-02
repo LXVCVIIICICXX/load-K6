@@ -113,7 +113,36 @@ padding:6px 10px;border-radius:6px}
 #ut td{vertical-align:middle;padding:5px 7px;border-bottom:1px solid var(--line)}
 #ut th{text-align:left;color:var(--mut);font-size:11.5px;font-weight:560;padding:5px 7px;white-space:nowrap}
 #ut table,#ut{border-collapse:collapse;width:100%;font-size:12.5px}
-#ut .st{font-size:11.5px;white-space:nowrap}
+#ut .st{font-size:11.5px;white-space:nowrap;text-align:center;width:1%}
+/* Строка-заголовок роли: группа читается как группа, а не как ещё один профиль. */
+#ut tr.grp>td{border-top:1px solid var(--line);padding-top:11px;background:transparent}
+#ut tr.grp b{font-size:12.5px}
+#ut tr.grp .hint{margin-left:8px;font-size:11px}
+/* Выключенная роль остаётся на виду, но гасится: её видно и понятно, что она
+   не участвует, — прятать группу значило бы терять её из вида совсем. */
+#ut tr.off{opacity:.45}
+/* Кнопка копирования живёт ВНУТРИ поля: снаружи она ломала бы ряд колонок
+   и уезжала от поля на разной ширине окна. */
+.pw{position:relative}
+.pw input{width:100%;padding-right:30px}
+.pw button.icon{position:absolute;right:4px;top:0;bottom:0;margin:auto 0;
+  display:inline-flex;align-items:center;justify-content:center;
+  width:22px;height:22px;padding:0;background:transparent;color:var(--mut);
+  border:0;border-radius:5px;cursor:pointer}
+.pw button.icon:hover{color:var(--fg);background:var(--line)}
+/* Иконочная кнопка в заголовке: ровно по строке заголовка, без «ступеньки». */
+button.icon{display:inline-flex;align-items:center;justify-content:center;
+  width:24px;height:24px;margin:0;padding:0;line-height:1;background:transparent;
+  color:var(--mut);border:1px solid var(--line);border-radius:6px;cursor:pointer}
+button.icon:hover{color:var(--fg);border-color:var(--mut)}
+#ut .ok{color:var(--ok);font-weight:700;font-size:14px}
+/* Вложенная карточка (настройка ролей) — светлее рамкой, чтобы не спорить
+   с основной. */
+.card.sub{padding:12px 14px;margin:0;background:transparent}
+#rolet{border-collapse:collapse;width:100%;font-size:12.5px}
+#rolet th{text-align:left;color:var(--mut);font-size:11.5px;font-weight:560;padding:5px 7px}
+#rolet td{padding:3px 7px}
+#rolet input[type=text]{max-width:220px}
 .pill{display:inline-block;padding:1px 7px;border-radius:20px;font-size:11.5px}
 /* Фон плашки был зашит тёмным — на светлой теме получалась чёрная нашлёпка.
    Берём подложку из переменной, она уже разная в двух темах. */
@@ -278,17 +307,36 @@ transition:width .4s ease;width:0}
 
 <div id="usr" style="display:none">
  <div class="card">
-  <b>Профили пользователей</b>
-  <div class="hint" style="margin:4px 0 10px">Выключенный профиль не попадёт ни в один тест.
+  <div style="display:flex;align-items:center;gap:8px">
+   <b>Профили пользователей</b>
+   <button id="rolecfg" class="ghost icon" title="Настроить роли"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9c.2.61.74 1.05 1.39 1.09H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg></button>
+  </div>
+  <div class="hint" style="margin:4px 0 10px">Выключенный профиль не попадёт ни в один тест;
+   выключенная роль убирает из прогонов всю свою группу.
    Вес задаёт долю внутри роли: при 100 : 10 : 10 первый профиль получит 83% трафика своей роли.
    Пароли лежат в открытом виде в <code>users.json</code> — это тестовый стенд, а не боевая система.</div>
+
+  <div id="rolebox" class="card sub" style="display:none;margin-bottom:12px">
+   <b>Роли</b>
+   <div class="hint" style="margin:4px 0 8px">Код роли — он же префикс переменных:
+    <code>student</code> даёт <code>STUDENT_EMAIL</code> и <code>STUDENT_PASS</code>, их берёт
+    <code>creds('student')</code> в сценарии. Пишется латиницей. Тем же кодом помечены запросы
+    в <code>requests.json</code>. Переименование кода переносит на новый и все профили роли.</div>
+   <div class="scroll"><table id="rolet"></table></div>
+   <div style="margin-top:8px">
+    <button id="radd" class="ghost">Добавить роль</button>
+    <button id="rsave">Сохранить роли</button>
+    <span id="rmsg" class="hint" style="margin-left:10px"></span>
+   </div>
+  </div>
+
   <div class="scroll"><table id="ut"></table></div>
-  <div style="margin-top:10px">
+  <div style="margin-top:10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
    <button id="uadd" class="ghost">Добавить профиль</button>
    <button id="usave">Сохранить</button>
    <button id="ucheck" class="ghost">Проверить вход у всех</button>
-   <span id="umsg" class="hint" style="margin-left:10px"></span>
   </div>
+  <div id="umsg" class="hint" style="margin-top:8px"></div>
  </div>
 </div>
 
@@ -744,90 +792,143 @@ async function restartServer(btn){
 
 /* ---------- Профили пользователей ----------
    Единый список для всех тестов: выключенный здесь профиль не уйдёт ни в один
-   прогон. Раньше пул был раскидан по нескольким файлам, и включить или
-   выключить кого-то можно было только руками.
+   прогон. Таблица сгруппирована по ролям — так видно, кем именно грузим, и
+   можно выключить целую группу, не гася профили по одному.
 */
-let USERS=[];
-/* Роль — произвольная метка, которую придумываете вы: список ролей инструмент
-   не держит. Из метки складывается имя переменных: student → STUDENT_EMAIL и
-   STUDENT_PASS, их же берёт creds('student') в сценарии. Поэтому метка пишется
-   латиницей — из кириллицы имя переменной не собрать.
-   Теми же метками помечены запросы в requests.json. */
+let USERS=[], ROLES=[];
+
+/* Роль — метка, которую вы придумали сами: список ролей инструмент не держит,
+   его заводит человек кнопкой-шестерёнкой. Из метки складывается имя
+   переменных: student → STUDENT_EMAIL и STUDENT_PASS, их же берёт
+   creds('student') в сценарии. Поэтому метка пишется латиницей — из кириллицы
+   имя переменной не собрать. */
 const rolePrefix=r=>String(r||'').toUpperCase().replace(/[^A-Z0-9]+/g,'_')
   .replace(/^_+|_+$/g,'');
-const usedRoles=()=>[...new Set(USERS.map(u=>u.role).filter(Boolean))];
+const roleOf=id=>ROLES.find(r=>r.id===id);
+const roleName=id=>{const r=roleOf(id); return (r&&r.name)||id||'без роли';};
+const roleOn=id=>{const r=roleOf(id); return r?r.enabled!==false:true;};
 
 function loadUsers(){
-  fetch('/api/users').then(r=>r.json()).then(u=>{USERS=u;drawUsers();});
+  Promise.all([fetch('/api/users').then(r=>r.json()),
+               fetch('/api/roles').then(r=>r.json())])
+    .then(([u,r])=>{USERS=u; ROLES=r; drawUsers(); drawRoles();});
+}
+
+/* Пароль виден, пока его набирают, и прячется, как только профиль сохранён:
+   на экране он нужен один раз, а мозолит глаза всё остальное время. Кнопка
+   справа кладёт его в буфер — чтобы прятать не значило «сделать недоступным». */
+function pwCell(u,i){
+  const shown=u._show?'text':'password';
+  return `<div class="pw">
+    <input type="${shown}" value="${esc(u.password||'')}" id="pw_${i}"
+      oninput="USERS[${i}].password=this.value;USERS[${i}]._show=true;markDirty()">
+    <button class="icon" title="Скопировать пароль"
+      onclick="copyPw(${i},this)"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
+  </div>`;
+}
+
+function copyPw(i,btn){
+  const v=USERS[i].password||'';
+  const done=()=>{const was=btn.innerHTML; btn.textContent='✓';
+    setTimeout(()=>{btn.innerHTML=was;},900);};
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(v).then(done,()=>fallback());
+  } else fallback();
+  // localhost без https иногда не отдаёт clipboard — тогда старым способом.
+  function fallback(){
+    const el=document.getElementById('pw_'+i), was=el.type;
+    el.type='text'; el.select(); try{document.execCommand('copy');}catch(e){}
+    el.type=was; done();
+  }
 }
 
 function drawUsers(){
-  const head='<tr><th></th><th>Почта</th><th>Пароль</th><th>Роль</th><th>Вес</th>'
-    +'<th>Заметка</th><th></th><th></th></tr>';
-  $('ut').innerHTML=head
-    +`<datalist id="rolelist">${usedRoles().map(r=>`<option value="${esc(r)}">`).join('')}</datalist>`
-    +USERS.map((u,i)=>`<tr>
-    <td><input type="checkbox" style="width:auto" ${u.enabled?'checked':''}
-        onchange="USERS[${i}].enabled=this.checked;markDirty()"></td>
-    <td><input type="text" value="${esc(u.email||'')}"
-        oninput="USERS[${i}].email=this.value;markDirty()"></td>
-    <td><input type="text" value="${esc(u.password||'')}"
-        oninput="USERS[${i}].password=this.value;markDirty()"></td>
-    <td><input type="text" list="rolelist" value="${esc(u.role||'')}" placeholder="student"
-        title="${rolePrefix(u.role)?'переменные '+rolePrefix(u.role)+'_EMAIL / '+rolePrefix(u.role)+'_PASS':'латиницей — из метки складывается имя переменной'}"
-        oninput="USERS[${i}].role=this.value;markDirty()"></td>
-    <td><input type="number" min="0" value="${u.weight||1}"
-        oninput="USERS[${i}].weight=+this.value;markDirty()"></td>
-    <td class="hint">${esc(u.note||'')}</td>
-    <td class="st" id="ust_${i}"></td>
-    <td><a href="#" onclick="USERS.splice(${i},1);drawUsers();markDirty();return false"
-        style="color:var(--bad)">удалить</a></td>
-  </tr>`).join('');
+  // Порядок групп: как в настройках ролей, а безролевые — в конце.
+  const ids=[...ROLES.map(r=>r.id), ...USERS.map(u=>u.role||'')]
+    .filter((v,i,a)=>a.indexOf(v)===i);
+  const rows=[];
+  for(const id of ids){
+    const mine=USERS.map((u,i)=>[u,i]).filter(([u])=>(u.role||'')===id);
+    if(!mine.length && !roleOf(id)) continue;
+    const off=!roleOn(id);
+    rows.push(`<tr class="grp${off?' off':''}">
+      <td><input type="checkbox" style="width:auto" ${off?'':'checked'}
+          title="Выключить всю роль" onchange="toggleRole('${esc(id)}',this.checked)"></td>
+      <td colspan="5"><b>${esc(roleName(id))}</b>${off?' <span class="hint">выключена</span>':''}</td>
+    </tr>`);
+    for(const [u,i] of mine){
+      rows.push(`<tr class="${off?'off':''}">
+        <td><input type="checkbox" style="width:auto" ${u.enabled?'checked':''}
+            onchange="USERS[${i}].enabled=this.checked;markDirty()"></td>
+        <td><input type="text" value="${esc(u.email||'')}"
+            oninput="USERS[${i}].email=this.value;markDirty()"></td>
+        <td>${pwCell(u,i)}</td>
+        <td><input type="number" min="0" value="${u.weight||1}" style="max-width:80px"
+            oninput="USERS[${i}].weight=+this.value;markDirty()"></td>
+        <td class="st" id="ust_${i}"></td>
+        <td><a href="#" onclick="USERS.splice(${i},1);drawUsers();markDirty();return false"
+            style="color:var(--bad)">удалить</a></td>
+      </tr>`);
+    }
+  }
+  $('ut').innerHTML='<tr><th></th><th>Почта</th><th>Пароль</th><th>Вес</th><th></th><th></th></tr>'
+    +rows.join('');
   drawShares();
 }
 
+function toggleRole(id,on){
+  let r=roleOf(id);
+  if(!r){ r={id:id,name:id,enabled:true}; ROLES.push(r); }
+  r.enabled=on;
+  saveRoles(); drawUsers(); drawRoles();
+}
+
 /* Показываем реальные доли: вес сам по себе ни о чём не говорит, а «83%
-   трафика уйдёт в один профиль» — говорит. Почты в сводку не выводим: она
-   висит на виду, а адреса из неё всё равно ничего не объясняют. */
+   трафика уйдёт в один профиль» — говорит. */
 function drawShares(){
-  const on=USERS.filter(u=>u.enabled);
+  const on=USERS.filter(u=>u.enabled&&roleOn(u.role||''));
   const byRole={};
-  for(const u of on) byRole[u.role||'—']=(byRole[u.role||'—']||0)+(+u.weight||0);
+  for(const u of on) byRole[u.role||'']=(byRole[u.role||'']||0)+(+u.weight||0);
   const parts=[];
-  // Роли перебираем те, что реально заведены, — заранее известных нет.
   for(const r of Object.keys(byRole)){
     const tot=byRole[r]||0;
     if(!tot) continue;
-    const mine=on.filter(u=>(u.role||'—')===r);
+    const mine=on.filter(u=>(u.role||'')===r);
     const share=mine.map(u=>`${Math.round(100*(+u.weight||0)/tot)}%`).join(' / ');
-    parts.push(`${r}: ${mine.length} ${mine.length===1?'профиль':(mine.length<5?'профиля':'профилей')} — ${share}`);
+    parts.push(`${roleName(r)}: ${share}`);
   }
+  const rs=Object.keys(byRole).filter(r=>byRole[r]>0);
   // Соотношение считаем только когда ролей ровно две: при трёх и больше
   // «столько-то к стольким-то» уже ни о чём не говорит.
-  const rs=Object.keys(byRole).filter(r=>byRole[r]>0);
   const ratio = rs.length===2 && byRole[rs[1]]
-    ? `  ·  ${rs[0]} к ${rs[1]} ${(byRole[rs[0]]/byRole[rs[1]]).toFixed(1)} : 1` : '';
+    ? `  ·  ${roleName(rs[0])} к ${roleName(rs[1])} ${(byRole[rs[0]]/byRole[rs[1]]).toFixed(1)} : 1` : '';
   $('umsg').textContent=parts.join('  ·  ')+ratio;
 }
 
 function markDirty(){ $('usave').textContent='Сохранить *'; drawShares(); }
 
 $('uadd').onclick=()=>{
-  USERS.push({email:'',password:'',role:usedRoles()[0]||'',weight:1,enabled:false,note:''});
+  // Новый профиль заводим в первую включённую роль: чаще всего доливают
+  // именно основную, а не заводят новую роль.
+  const first=(ROLES.find(r=>r.enabled!==false)||ROLES[0]||{}).id||'';
+  USERS.push({email:'',password:'',role:first,weight:1,enabled:false,_show:true});
   drawUsers(); markDirty();
 };
 $('usave').onclick=()=>{
+  const body=USERS.map(u=>{const c={...u}; delete c._show; return c;});
   fetch('/api/users',{method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify(USERS)}).then(r=>r.json()).then(d=>{
+    body:JSON.stringify(body)}).then(r=>r.json()).then(d=>{
       $('usave').textContent='Сохранить';
       $('umsg').textContent=d.error?('не сохранилось: '+d.error):`сохранено, профилей ${d.n}`;
-      if(!d.error) setTimeout(drawShares,1500);
+      // Сохранён — значит пароли прячем: набор закончен.
+      if(!d.error){ USERS.forEach(u=>delete u._show); drawUsers(); setTimeout(drawShares,1500); }
     });
 };
 $('ucheck').onclick=async ()=>{
   $('ucheck').disabled=true;
   for(let i=0;i<USERS.length;i++){
     const u=USERS[i]; const cell=document.getElementById('ust_'+i);
+    if(!cell) continue;
     if(!u.email||!u.password){ cell.textContent='—'; continue; }
     cell.textContent='…';
     try{
@@ -835,13 +936,86 @@ $('ucheck').onclick=async ()=>{
         headers:{'Content-Type':'application/json'},
         body:JSON.stringify({email:u.email,password:u.password})});
       const d=await r.json();
+      // Получилось — хватит галочки. Не получилось — важен код ответа, а
+      // слово «login» перед ним ничего не добавляет.
+      const code=(d.why||'').match(/\d{3}/);
       cell.innerHTML = d.ok
-        ? `<span class="pill ok">вход ок${d.uid?', id '+esc(d.uid):''}</span>`
-        : `<span class="bad">${esc(d.why||'не вошёл')}</span>`;
+        ? `<span class="ok" title="вход ок${d.uid?', id '+esc(d.uid):''}">&#10003;</span>`
+        : `<span class="bad" title="${esc(d.why||'')}">${code?code[0]:esc(d.why||'не вошёл')}</span>`;
     }catch(e){ cell.textContent='ошибка'; }
   }
   $('ucheck').disabled=false;
 };
+
+/* ---------- Настройка ролей ---------- */
+$('rolecfg').onclick=()=>{
+  const b=$('rolebox');
+  b.style.display=b.style.display==='none'?'':'none';
+  if(b.style.display==='') drawRoles();
+};
+
+function drawRoles(){
+  ROLES.forEach(r=>{ if(r._was===undefined) r._was=r.id||''; });
+  $('rolet').innerHTML='<tr><th></th><th>Код (латиницей)</th><th>Название</th>'
+    +'<th>Переменные</th><th></th></tr>'
+    +ROLES.map((r,i)=>`<tr>
+      <td><input type="checkbox" style="width:auto" ${r.enabled!==false?'checked':''}
+          title="Роль участвует в прогонах" onchange="ROLES[${i}].enabled=this.checked;roleDirty()"></td>
+      <td><input type="text" value="${esc(r.id||'')}" placeholder="student"
+          oninput="ROLES[${i}].id=this.value;roleDirty()"
+          onchange="moveRole(${i})"></td>
+      <td><input type="text" value="${esc(r.name||'')}" placeholder="пользователь"
+          oninput="ROLES[${i}].name=this.value;roleDirty()"></td>
+      <td class="hint" id="rolev_${i}">${varsOf(r.id)}</td>
+      <td><a href="#" onclick="dropRole(${i});return false" style="color:var(--bad)">удалить</a></td>
+    </tr>`).join('');
+}
+
+// Имена переменных показываем здесь: в таблице профилей это был шум, а при
+// заведении роли — единственное, что человеку надо знать про её код.
+function varsOf(id){
+  const p=rolePrefix(id);
+  return p ? esc(p+'_EMAIL / '+p+'_PASS') : 'латиницей';
+}
+
+/* Профили переезжают за ролью, когда правку кода закончили: делать это на
+   каждой букве значило бы разносить людей по несуществующим группам. */
+function moveRole(i){
+  const r=ROLES[i], old=r._was||'', id=(r.id||'').trim();
+  r.id=id;
+  if(old && id && old!==id) USERS.forEach(u=>{ if((u.role||'')===old) u.role=id; });
+  r._was=id;
+  const cell=document.getElementById('rolev_'+i);
+  if(cell) cell.innerHTML=varsOf(id);
+  roleDirty(); markDirty();
+}
+
+function roleDirty(){ $('rsave').textContent='Сохранить роли *'; drawUsers(); }
+
+function dropRole(i){
+  const id=ROLES[i].id;
+  const n=USERS.filter(u=>(u.role||'')===id).length;
+  if(n && !confirm(`В роли «${roleName(id)}» ${n} профиль(я). Удалить роль? Профили останутся, но без группы.`)) return;
+  ROLES.splice(i,1); roleDirty(); drawRoles();
+}
+
+$('radd').onclick=()=>{
+  ROLES.push({id:'',name:'',enabled:true,_was:''});
+  drawRoles(); roleDirty();
+  const rows=$('rolet').rows; rows[rows.length-1].querySelector('input[type=text]').focus();
+};
+$('rsave').onclick=()=>saveRoles(true);
+
+function saveRoles(loud){
+  const body=ROLES.filter(r=>(r.id||'').trim()).map(r=>{const c={...r}; delete c._was; return c;});
+  return fetch('/api/roles',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify(body)}).then(r=>r.json()).then(d=>{
+      $('rsave').textContent='Сохранить роли';
+      if(loud) $('rmsg').textContent=d.error?('не сохранилось: '+d.error):`сохранено, ролей ${d.n}`;
+      return d;
+    });
+}
+
 
 function loadReports(){
   fetch('/api/reports').then(r=>r.json()).then(rs=>{
