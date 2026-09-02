@@ -1,0 +1,34 @@
+[
+ {
+  "email": "user1@example.com",
+  "password": "пароль",
+  "role": "user",
+  "weight": 100,
+  "enabled": true,
+  "note": "роль — метка, которую придумываете вы: из неё складывается имя переменных (user → USER_EMAIL, USER_PASS)"
+ },
+ {
+  "email": "user2@example.com",
+  "password": "пароль",
+  "role": "user",
+  "weight": 10,
+  "enabled": true,
+  "note": "второй профиль той же роли: вес задаёт долю в пуле"
+ },
+ {
+  "email": "reviewer@example.com",
+  "password": "пароль",
+  "role": "reviewer",
+  "weight": 6,
+  "enabled": true,
+  "note": "другая роль — другие права и другие запросы"
+ },
+ {
+  "email": "admin@example.com",
+  "password": "пароль",
+  "role": "admin",
+  "weight": 1,
+  "enabled": false,
+  "note": "нужен, только если его запросы есть в requests.json"
+ }
+]

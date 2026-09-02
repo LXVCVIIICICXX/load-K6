@@ -1,0 +1,56 @@
+{
+ "_": "Карта запросов сайта: по ней работают mix.js (нагрузка) и baseline.js (эталон). Скопируй в requests.json и опиши свои запросы. Пути берутся из спецификации API (api/*.json) или из записи браузера — смотри, что реально шлёт фронт.",
+ "_поля": {
+  "name": "короткое имя — по нему отчёт группирует перцентили, полный путь для этого не годится",
+  "method": "GET по умолчанию",
+  "path": "путь от корня API; {ITEM_ID} подставится из pool.json",
+  "role": "чьей сессией ходить: метка роли из users.json (user, reviewer, admin — как назовёте). Из неё складывается имя переменных: user → USER_EMAIL/USER_PASS",
+  "weight": "доля в миксе: сколько таких запросов приходится на другие",
+  "login": "true — вместо запроса выполняется полный вход этой ролью (вход тоже часть нагрузки, и самая дорогая)",
+  "body": "тело для POST/PUT, если нужно"
+ },
+ "requests": [
+  {
+   "name": "login",
+   "role": "user",
+   "login": true,
+   "weight": 12
+  },
+  {
+   "name": "home",
+   "path": "/api/v1/home",
+   "role": "user",
+   "weight": 12
+  },
+  {
+   "name": "items",
+   "path": "/api/v1/items?limit=20",
+   "role": "user",
+   "weight": 30
+  },
+  {
+   "name": "item.show",
+   "path": "/api/v1/items/{ITEM_ID}",
+   "role": "user",
+   "weight": 20
+  },
+  {
+   "name": "profile",
+   "path": "/api/v1/profile",
+   "role": "user",
+   "weight": 8
+  },
+  {
+   "name": "admin.home",
+   "path": "/api/v1/admin/home",
+   "role": "reviewer",
+   "weight": 3
+  },
+  {
+   "name": "report",
+   "path": "/api/v1/admin/report",
+   "role": "reviewer",
+   "weight": 1
+  }
+ ]
+}

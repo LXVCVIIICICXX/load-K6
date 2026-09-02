@@ -1,0 +1,10 @@
+{
+  "name": "site-load-recorder",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Запись браузерной сессии в HAR: человек проходит сценарий руками, Playwright слушает",
+  "dependencies": {
+    "playwright": "^1.52.0"
+  }
+}

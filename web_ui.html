@@ -1,0 +1,1354 @@
+<!doctype html><meta charset="utf-8"><title>Нагрузка сайта</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+:root{--bg:#fbfaf9;--fg:#1a1a19;--mut:#6b6b68;--line:#e3e1de;--card:#fff;--c1:#c8613f;
+--ok:#3f7a52;--ok-bg:#eef5f0;--bad:#b3452c;--code:#f4f2f0;--grid:#eeecea;
+/* Цвета методов — привычные по Swagger. На светлой теме взяты потемнее:
+   фирменный голубой GET на белом фоне почти не читается. */
+--mGET:#2f6fb5;--mPOST:#2f8f5b;--mPUT:#c2760c;--mPATCH:#1f8f80;
+--mDELETE:#c2392a;--mOPTIONS:#6d4bc4;--mHEAD:#8a4bbd}
+@media(prefers-color-scheme:dark){:root{--bg:#191817;--fg:#eceae7;--mut:#a3a09c;--line:#333130;
+--card:#211f1e;--c1:#e08059;--ok:#7ab88e;--ok-bg:#1f2a23;--bad:#e0755a;--code:#262322;--grid:#2b2928;
+--mGET:#61affe;--mPOST:#49cc90;--mPUT:#fca130;--mPATCH:#50e3c2;
+--mDELETE:#f93e3e;--mOPTIONS:#b48cf2;--mHEAD:#c88cf7}}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font:15px/1.55 ui-sans-serif,system-ui,-apple-system,sans-serif;margin:0;padding:26px 18px 60px}
+.wrap{max-width:880px;margin:0 auto}
+h1{font-size:22px;margin:0 0 3px;letter-spacing:-.02em}
+.meta{color:var(--mut);font-size:13px;margin-bottom:20px}
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin-bottom:18px}
+.tab{padding:8px 15px;cursor:pointer;border-bottom:2px solid transparent;color:var(--mut);font-weight:560;font-size:14px}
+.tab.on{color:var(--fg);border-bottom-color:var(--c1)}
+/* Подвкладки внутри «Отчётов» — тише основных, чтобы не спорили за внимание. */
+.subtabs{display:flex;gap:4px;margin:0 0 14px}
+.stab{padding:5px 12px;border-radius:3px;cursor:pointer;font-size:13.5px;
+  color:var(--mut);border:1px solid transparent}
+.stab:hover{color:var(--fg)}
+.stab.on{color:var(--fg);border-color:var(--line);background:var(--card)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:15px 17px;margin:12px 0}
+label{display:block;font-size:12.5px;color:var(--mut);margin:12px 0 4px;font-weight:560}
+select,input{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:7px;
+background:var(--bg);color:var(--fg);font:14px ui-sans-serif,system-ui,sans-serif}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.desc{color:var(--mut);font-size:12.5px;margin-top:6px;line-height:1.45}
+button{padding:10px 20px;border:0;border-radius:8px;background:var(--c1);color:#fff;
+font:600 14px ui-sans-serif,system-ui,sans-serif;cursor:pointer;margin-top:16px}
+button:disabled{opacity:.45;cursor:not-allowed}
+button.stop{background:var(--bad)}
+pre{background:var(--code);border:1px solid var(--line);border-radius:8px;padding:11px 13px;
+height:340px;overflow:auto;font:12px/1.5 ui-monospace,Menlo,monospace;margin:12px 0 0;white-space:pre-wrap}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th,td{text-align:left;padding:7px 8px;border-bottom:1px solid var(--line)}
+th{color:var(--mut);font-weight:560;font-size:12px}
+td.n{text-align:right;font-variant-numeric:tabular-nums}
+/* Числа переносить нельзя: «24.3 МБ» разрывалось на две строки и колонка
+   выглядела шире, чем ей нужно. */
+th.n,td.n{white-space:nowrap}
+a{color:var(--c1)}
+.status{display:inline-block;padding:2px 10px;border-radius:20px;font-size:12px;font-weight:600}
+.status.run{background:var(--ok-bg);color:var(--ok)}
+.status.idle{color:var(--mut)}
+.good{color:var(--ok)}.bad{color:var(--bad);font-weight:640}
+.hint{color:var(--mut);font-size:12px;margin-top:5px}
+.flow{margin:12px 0 4px;border:1px solid var(--line);border-radius:9px;overflow:hidden}
+.track{border-top:1px solid var(--line)}
+.track:first-child{border-top:0}
+.trk-h{padding:8px 12px;background:var(--code);font-size:12.5px;font-weight:640;
+display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.trk-h .par{font-weight:500;color:var(--c1);font-size:11.5px;border:1px solid var(--c1);
+border-radius:20px;padding:0 7px}
+.trk-h .nt{font-weight:400;color:var(--mut);font-size:11.5px}
+/* Сворачивание шага. Треугольник поворачивается, число запросов остаётся
+   видно и в свёрнутом виде — иначе непонятно, что там внутри. */
+.trk-h.fold{cursor:pointer;user-select:none}
+.trk-h.fold:hover{color:var(--c1)}
+.trk-h .caret{color:var(--mut);font-size:10px;transition:transform .12s;display:inline-block}
+.trk-h .cnt{margin-left:auto;color:var(--mut);font-weight:400;font-size:11.5px;
+font-variant-numeric:tabular-nums}
+.track.shut .steps{display:none}
+.track.shut .caret{transform:rotate(-90deg)}
+.steps{padding:8px 12px 10px;font:12px/1.75 ui-monospace,Menlo,monospace;overflow-x:auto}
+.st{white-space:pre}
+.tree{color:var(--mut)}
+.mth{display:inline-block;min-width:52px;font-weight:700}
+.mGET{color:var(--mGET)}.mPOST{color:var(--mPOST)}.mPUT{color:var(--mPUT)}
+.mPATCH{color:var(--mPATCH)}.mDELETE{color:var(--mDELETE)}
+.mOPTIONS{color:var(--mOPTIONS)}.mHEAD{color:var(--mHEAD)}
+.pth{color:var(--fg)}
+.cmt{color:var(--mut);font-family:ui-sans-serif,system-ui,sans-serif;font-size:11.5px}
+.parwrap{border-left:3px solid var(--c1)}
+button.ghost{background:transparent;color:var(--fg);border:1px solid var(--line)}
+button.mini{margin:0;padding:3px 10px;font-size:12px;font-weight:560}
+button.mini:hover{border-color:var(--bad);color:var(--bad)}
+button.ghost:hover{border-color:var(--mut)}
+/* Кнопка в одну строку с полем ввода: общее правило для button задаёт
+   margin-top, и в горизонтальном ряду он ронял кнопку ниже поля. */
+.inline{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.inline button{margin-top:0}
+.inline input{flex:1;min-width:260px}
+/* Общее правило растягивает любой input на всю ширину — галочке это не нужно. */
+.chk{display:flex;align-items:center;gap:6px;white-space:nowrap;
+color:var(--mut);font-size:12.5px;font-weight:560;cursor:pointer;margin:0}
+.chk input{width:auto;flex:none;min-width:0;margin:0;accent-color:var(--c1)}
+.chk:has(input:disabled){opacity:.5;cursor:not-allowed}
+/* Действий над записью шесть; в столбце они занимали больше места, чем сама
+   таблица. Прячем их за одной кнопкой и раскрываем по клику. */
+.acts{position:relative;display:inline-block}
+/* Общее правило для mini красит наведение в цвет ошибки — на кнопке, которая
+   всего лишь раскрывает список, это читалось бы как «удалить». */
+.acts>button.mini:hover{border-color:var(--mut);color:var(--fg)}
+.acts>.menu{display:none;position:absolute;right:0;top:calc(100% + 4px);z-index:5;
+background:var(--card);border:1px solid var(--line);border-radius:8px;padding:4px;
+box-shadow:0 6px 20px rgba(0,0,0,.28);min-width:190px}
+.acts.open>.menu{display:block}
+.acts .menu button{display:block;width:100%;text-align:left;margin:0;border:0;
+background:transparent;color:var(--fg);font:400 13px ui-sans-serif,system-ui,sans-serif;
+padding:6px 10px;border-radius:6px}
+.acts .menu button:hover{background:var(--bg)}
+.acts .menu button.danger:hover{color:var(--bad)}
+.acts .menu hr{border:0;border-top:1px solid var(--line);margin:4px 0}
+#ut input[type=text]{padding:4px 7px;font-size:12.5px;margin:0;width:100%;min-width:150px}
+#ut input[type=number]{padding:4px 7px;font-size:12.5px;margin:0;width:74px}
+#ut select{padding:4px 7px;font-size:12.5px;margin:0;width:auto}
+#ut td{vertical-align:middle;padding:5px 7px;border-bottom:1px solid var(--line)}
+#ut th{text-align:left;color:var(--mut);font-size:11.5px;font-weight:560;padding:5px 7px;white-space:nowrap}
+#ut table,#ut{border-collapse:collapse;width:100%;font-size:12.5px}
+#ut .st{font-size:11.5px;white-space:nowrap}
+.pill{display:inline-block;padding:1px 7px;border-radius:20px;font-size:11.5px}
+/* Фон плашки был зашит тёмным — на светлой теме получалась чёрная нашлёпка.
+   Берём подложку из переменной, она уже разная в двух темах. */
+.pill.ok{background:var(--ok-bg);color:var(--ok)}
+.bad{color:var(--bad)}.warn{color:var(--warn)}
+/* Область для перетаскивания спецификации. Пунктир — общепринятый знак того,
+   что сюда можно бросить файл; пока файл тащат над ней, она подсвечивается. */
+.drop{border:1.5px dashed var(--line);border-radius:10px;padding:20px 14px;text-align:center;
+  color:var(--mut);font-size:12.5px;transition:border-color .12s,background .12s}
+.drop.over{border-color:var(--c1);background:var(--code)}
+.drop b{display:block;color:var(--fg);font-weight:620;font-size:14px;margin-bottom:2px}
+/* label глобально блочный и с отступами — здесь он часть строки. */
+.pick{display:inline;margin:0;color:var(--c1);font-size:12.5px;font-weight:560;
+  cursor:pointer;text-decoration:underline;text-underline-offset:2px}
+/* Подробный просмотр спецификации: те же операции, что в самой доке, плюс
+   отметка покрытия справа. Список длинный, поэтому он в своей прокрутке и
+   свёрнут по разделам — иначе карточка настроек растянулась бы на экраны. */
+.ops{border:1px solid var(--line);border-radius:9px;overflow:auto;max-height:460px;margin-top:10px}
+.opg{border-top:1px solid var(--line)}
+.opg:first-child{border-top:0}
+.opg-h{padding:7px 12px;background:var(--code);font-size:12px;font-weight:640;
+  cursor:pointer;user-select:none;display:flex;gap:8px;align-items:center;
+  position:sticky;top:0}
+.opg-h:hover{color:var(--c1)}
+.opg-h .caret{color:var(--mut);font-size:10px;display:inline-block;transition:transform .12s}
+.opg.shut .caret{transform:rotate(-90deg)}
+.opg.shut .opl{display:none}
+.opg-h .cnt{margin-left:auto;color:var(--mut);font-weight:400;font-size:11.5px}
+.op{display:flex;gap:10px;align-items:baseline;padding:4px 12px;
+  font:12px/1.6 ui-monospace,Menlo,monospace}
+.op+.op{border-top:1px solid var(--grid)}
+.op .cov{margin-left:auto;white-space:nowrap;font:600 11.5px ui-sans-serif,system-ui,sans-serif}
+.op .cov.yes{color:var(--ok)}
+.op .cov.no{color:var(--mut);font-weight:400}
+.op{cursor:pointer}
+.op .caret{color:var(--mut);font-size:9px;flex:0 0 9px;display:inline-block;
+  transition:transform .12s}
+.op.open .caret{transform:rotate(90deg)}
+/* Подробности операции: то же, что показывает сама дока — параметры, тело,
+   ответы. Раскрываются по клику: развёрнутыми они бы утопили список. */
+.opdet{padding:6px 12px 12px 31px;background:var(--code);
+  border-top:1px solid var(--grid);font:12.5px/1.6 ui-sans-serif,system-ui,sans-serif;
+  color:var(--mut)}
+.opdet b{color:var(--fg);font-weight:620;font-size:12px}
+.opdet code{font-family:ui-monospace,Menlo,monospace;font-size:11.5px;color:var(--fg)}
+.opdet .grid{display:grid;grid-template-columns:auto auto 1fr;gap:1px 12px;margin:3px 0 9px}
+.opdet .grid>span{padding:1px 0}
+.opdet .req{color:var(--c1)}
+.opdet .code{font-family:ui-monospace,Menlo,monospace;color:var(--fg)}
+.opbar{display:flex;gap:10px;align-items:center;margin-top:10px;flex-wrap:wrap}
+.opbar input[type=text]{flex:1 1 220px;width:auto}
+.opbar label{display:inline-flex;align-items:center;gap:5px;margin:0;font-size:12.5px;
+  white-space:nowrap;cursor:pointer}
+.opbar input[type=checkbox]{width:auto;margin:0}
+#preview .tick{fill:var(--mut);font-size:9.5px;font-variant-numeric:tabular-nums}
+#preview svg{width:100%;height:auto;display:block}
+.hdr{display:flex;align-items:flex-start;gap:12px}
+.hdr h1{flex:1;margin:0}
+.restart{background:transparent;border:1px solid var(--line);color:var(--mut);padding:6px 13px;
+border-radius:7px;cursor:pointer;font-size:12.5px;white-space:nowrap}
+.restart:hover{color:var(--fg);border-color:var(--mut)}
+.restart:disabled{opacity:.5;cursor:default}
+#prog{display:none;margin:12px 0 4px}
+.prow{display:flex;align-items:center;margin-top:8px}
+#ppct{flex:0 0 auto;font-weight:640;font-size:15px;font-variant-numeric:tabular-nums;
+white-space:nowrap}
+.bar{flex:0 0 auto;height:8px;background:var(--code);border-radius:6px;overflow:hidden}
+.bar>i{display:block;height:100%;background:var(--c1);border-radius:6px;
+transition:width .4s ease;width:0}
+.rephdr{display:flex;align-items:center;gap:12px}
+.rephdr b{flex:1}
+.pmeta{display:flex;gap:14px;flex-wrap:wrap;color:var(--mut);font-size:12.5px;margin-top:6px}
+.pmeta b{color:var(--fg);font-weight:640;font-variant-numeric:tabular-nums}
+</style>
+<div class="wrap">
+<div class="hdr"><h1>Нагрузочное тестирование сайта</h1>
+<button id="restart" class="restart" onclick="restartServer(this)"
+ title="Перечитать код морды: список тестов, профили и поля формы читаются один раз при старте">Перезапустить сервер</button></div>
+<div class="meta"><span id="st" class="status idle">простой</span></div>
+<div class="tabs"><div class="tab on" data-t="run">Запуск</div><div class="tab" data-t="rep">Отчёты</div><div class="tab" data-t="usr">Пользователи</div><div class="tab" data-t="set">Настройки</div></div>
+
+<div id="run">
+ <div class="card">
+  <label>Тест</label><select id="test"></select>
+  <div class="desc" id="tdesc"></div>
+  <div id="flow"></div>
+  <div id="presetWrap"><label>Паттерн нагрузки</label><select id="preset"></select>
+   <div class="desc" id="pdesc"></div>
+   <div id="pars" class="row" style="margin-top:8px"></div>
+   <div id="preview" class="card" style="margin-top:10px;padding:10px 12px"></div>
+  </div>
+  <div id="targetBox" style="display:none"><label id="targetLbl">Какой запрос разгоняем</label><select id="target"></select></div>
+  <div id="durBox" style="display:none"><label>Длительность</label><select id="duration"></select>
+   <div class="desc" id="ddesc"></div></div>
+  <div id="roundsBox" style="display:none"><label>Сколько проходов по всем запросам</label>
+   <input id="rounds" type="number" min="1" value="20">
+   <div class="desc">Эталон идёт в один поток без нагрузки: время задаётся числом проходов, а не минутами. 20 проходов ≈ 2 минуты.</div></div>
+  <div class="row">
+   <div><label>Имя прогона</label><input id="name" placeholder="например H1-ramp"></div>
+   <div><label id="vulbl">Виртуальных пользователей, максимум</label>
+    <input id="maxVus" type="number" min="1" placeholder="авто">
+    <div class="hint" id="vuhint"></div></div>
+  </div>
+  <button id="go">Запустить</button>
+  <button id="stopb" class="stop" style="display:none">Остановить</button>
+ </div>
+ <div id="prog" class="card"><b id="pstage">—</b>
+  <div class="prow"><span id="ppct">0%</span>
+   <div class="bar"><i id="pbar"></i></div></div>
+  <div class="pmeta">
+    <span>прошло <b id="pel">—</b></span>
+    <span>потоков <b id="pvus">—</b></span>
+    <span>запросов <b id="preq">—</b></span>
+    <span id="psesswrap" style="display:none">сессий <b id="psess">0</b></span>
+    <span>rps <b id="prps">—</b></span>
+    <span id="perrwrap" style="display:none">ошибок <b id="perr">0</b></span>
+  </div>
+  <div class="hint" id="pdrain" style="display:none;margin-top:6px"></div></div>
+ <div class="card"><b>Лог событий</b><pre id="log">—</pre>
+  <div class="hint" id="doneline"></div></div>
+</div>
+
+<div id="rep" style="display:none">
+ <div class="subtabs"><div class="stab on" data-s="runs">Прогоны нагрузки</div>
+  <div class="stab" data-s="har">Записи браузера</div></div>
+
+ <div id="rep_runs"><div class="card">
+  <div class="rephdr"><b>Прогоны стенда</b>
+   <button id="wipe" class="ghost mini">Очистить все отчёты</button></div>
+  <div class="hint" style="margin:4px 0 10px">Удаление стирает папку прогона целиком:
+   отчёт, сводку и сырой поток k6. Восстановить нечем.</div>
+  <div class="scroll"><table id="rt"></table></div></div></div>
+
+ <div id="rep_har" style="display:none">
+  <div class="card">
+   <b>Новая запись</b>
+   <div class="hint" style="margin:4px 0 10px">Откроется настоящий браузер — пройдите
+    сценарий руками и нажмите «Остановить». Пишется всё: точное время каждого запроса,
+    паузы между ними и признак «взято из кэша». Basic-авторизация стенда
+    подставляется из вкладки «Настройки», раздел «Фронт стенда».</div>
+   <div class="inline">
+    <input id="recname" placeholder="название записи, например «пользователь сдаёт ДЗ»">
+    <input id="recurl" placeholder="адрес, с которого начать" style="min-width:200px">
+    <label class="chk"><input type="checkbox" id="recauth" checked> basic-авторизация</label>
+    <button id="recgo">Записать</button>
+    <button id="recstop" class="ghost" style="display:none">Остановить</button>
+    <span id="recstate" class="hint"></span>
+   </div>
+   <div class="hint" id="recmsg" style="margin-top:8px"></div>
+  </div>
+  <div class="card">
+  <b>Записи браузера</b>
+  <div class="hint" style="margin:4px 0 10px">Отчёты по HAR-записям реальных сессий:
+   сколько запросов снял кэш, сколько дошло до бэка, во что каждый обошёлся в базе.
+   Считаются по файлам из папки <code>har/</code> — сюда попадают и записи отсюда,
+   и положенные вручную из DevTools. Сверка с Telescope необязательна: без неё отчёт
+   соберётся, только без раздела «Браузер против бэка».</div>
+  <div class="scroll"><table id="ht"></table></div>
+  <div class="hint" id="hmsg" style="margin-top:10px"></div>
+ </div></div>
+</div>
+
+<div id="usr" style="display:none">
+ <div class="card">
+  <b>Профили пользователей</b>
+  <div class="hint" style="margin:4px 0 10px">Выключенный профиль не попадёт ни в один тест.
+   Вес задаёт долю внутри роли: при 100 : 10 : 10 первый профиль получит 83% трафика своей роли.
+   Пароли лежат в открытом виде в <code>users.json</code> — это тестовый стенд, а не боевая система.</div>
+  <div class="scroll"><table id="ut"></table></div>
+  <div style="margin-top:10px">
+   <button id="uadd" class="ghost">Добавить профиль</button>
+   <button id="usave">Сохранить</button>
+   <button id="ucheck" class="ghost">Проверить вход у всех</button>
+   <span id="umsg" class="hint" style="margin-left:10px"></span>
+  </div>
+ </div>
+</div>
+
+<div id="set" style="display:none">
+ <div id="setbox"></div>
+ <div class="card">
+  <div class="hint">Всё, что введено здесь, лежит только на этой машине —
+   в <code>secrets.json</code> с правами 0600. Файл закрыт в
+   <code>.gitignore</code> и в репозиторий не уходит. Обратно на страницу
+   пароли не отдаются: заполненное поле показано как «задан», а пустое поле
+   при сохранении означает «оставить как есть», а не «стереть».
+   Тест сам решает, нужен ли ему раздел: незаполненный просто не используется.</div>
+ </div>
+
+ <div class="card">
+  <b>Спецификация API</b>
+  <div class="hint" style="margin:4px 0 10px">Swagger или OpenAPI стенда — файл
+   <code>.json</code> (<code>.yaml</code> — только если в системе стоит PyYAML).
+   Файлы лежат в каталоге <code id="spdir">api/</code> рядом с кодом и в репозиторий
+   не уходят: спецификация — это карта чужого стенда. Отсюда морда берёт список
+   запросов для теста «разгон одного запроса»; пока файла нет, список короткий
+   и вписан в код. Спецификаций может быть несколько — запросы сложатся.</div>
+  <div id="drop" class="drop">
+   <b>Перетащите сюда файл спецификации</b>
+   <span>или <label class="pick">выберите на диске<input id="specf" type="file" hidden
+    multiple accept=".json,.yaml,.yml,application/json"></label></span>
+  </div>
+  <div class="scroll"><table id="spt"></table></div>
+  <div class="hint" id="spmsg" style="margin-top:10px"></div>
+  <div id="spdet" style="display:none">
+   <div class="opbar">
+    <input id="opq" type="text" placeholder="Поиск операции: путь, название, метод…">
+    <label><input id="oponly" type="checkbox"> только непокрытые</label>
+   </div>
+   <div class="hint" id="opsum" style="margin-top:8px"></div>
+   <div class="ops" id="ops"></div>
+  </div>
+ </div>
+
+ <div class="card">
+  <b>Список сценариев</b>
+  <div class="hint" style="margin:4px 0 10px">Собранные из записей сценарии.
+   «Скрыть» убирает сценарий из списка тестов, но оставляет файл — так его можно
+   вернуть. «Удалить» стирает сценарий и его карту запросов; сама запись
+   остаётся, и собрать сценарий заново можно в любой момент.</div>
+  <div class="scroll"><table id="sct"></table></div>
+  <div class="hint" id="scmsg" style="margin-top:10px"></div>
+ </div>
+</div>
+</div>
+<script>
+let META=null, atBottom=true;
+const $=id=>document.getElementById(id);
+$('log').addEventListener('scroll',e=>{const el=e.target;atBottom=el.scrollHeight-el.scrollTop-el.clientHeight<30;});
+document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{
+  document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('on',x===t));
+  $('run').style.display=t.dataset.t==='run'?'':'none';
+  $('rep').style.display=t.dataset.t==='rep'?'':'none';
+  $('usr').style.display=t.dataset.t==='usr'?'':'none';
+  $('set').style.display=t.dataset.t==='set'?'':'none';
+  if(t.dataset.t==='rep') loadReports();
+  if(t.dataset.t==='usr') loadUsers();
+  if(t.dataset.t==='set') loadSettings();
+});
+// Профили тянем сразу, а не только по клику на вкладку: после перезапуска
+// страница открывается на «Запуске», и таблица учёток оставалась пустой до
+// первого клика — выглядело так, будто учёток нет вовсе.
+loadUsers();
+fetch('/api/meta').then(r=>r.json()).then(m=>{
+  META=m;
+  $('test').innerHTML=m.tests.map(t=>`<option value="${t.id}">${t.name}</option>`).join('');
+  fillPresets();
+  $('target').innerHTML=m.endpoints.map(e=>`<option>${e}</option>`).join('');
+  // Пустое значение = не трогать профиль: у теста без ступеней это просто
+  // означает «как задано в самом тесте».
+  $('duration').innerHTML='<option value="">как в профиле</option>'
+    +m.durations.map(x=>`<option value="${x.v}">${x.n}</option>`).join('');
+  $('duration').value='';
+  upd();
+});
+function esc(x){return String(x).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));}
+// Перечитать список тестов, не перезагружая страницу: собранные сценарии
+// появляются и исчезают по ходу работы. Выбранный тест сохраняем.
+function refreshTests(){
+  return fetch('/api/meta').then(r=>r.json()).then(m=>{
+    const was=$('test').value;
+    META=m;
+    $('test').innerHTML=m.tests.map(t=>`<option value="${t.id}">${esc(t.name)}</option>`).join('');
+    $('test').value=m.tests.some(t=>t.id===was)?was:(m.tests[0]||{}).id||'';
+    upd();
+  });
+}
+function drawFlow(t){
+  const f=t.flow||[];
+  if(!f.length){$('flow').innerHTML='';return;}
+  const par=f.some(tr=>tr.parallel);
+  let h='<div class="flow">';
+  f.forEach((tr,ti)=>{
+    // Заголовок трека сворачивает его. У собранных сценариев треков бывает
+    // под сорок, и целиком карта не помещается на экран; по умолчанию всё
+    // развёрнуто — свернуть должен человек, а не мы за него.
+    h+=`<div class="track${tr.parallel?' parwrap':''}">`
+     + `<div class="trk-h fold" data-t="${ti}" title="свернуть или развернуть">`
+     + `<span class="caret">▾</span>${esc(tr.role)}`;
+    if(tr.parallel) h+='<span class="par">параллельно</span>';
+    if(tr.note) h+=`<span class="nt">${esc(tr.note)}</span>`;
+    h+=`<span class="cnt">${tr.steps.length}</span>`;
+    h+='</div><div class="steps">';
+    tr.steps.forEach((s,i)=>{
+      const next=tr.steps[i+1];
+      let tree='';
+      if(s.d>0){
+        tree='│  '.repeat(s.d-1) + (next && next.d>=s.d ? '├─ ' : '└─ ');
+      }
+      h+=`<div class="st"><span class="tree">${tree}</span>`
+       + `<span class="mth m${s.m}">${s.m}</span> <span class="pth">${esc(s.p)}</span>`
+       + (s.n?`   <span class="cmt">— ${esc(s.n)}</span>`:'')
+       + '</div>';
+    });
+    h+='</div></div>';
+  });
+  h+='</div>';
+  if(par) h+='<div class="hint">Треки помечены «параллельно» — они идут одновременно, а не друг за другом.</div>';
+  else if(f.length>1) h+='<div class="hint">Блоки идут по порядку сверху вниз, каждый в своей сессии.</div>';
+  else h+='<div class="hint">Отступ означает зависимость: вложенный запрос использует данные из того, под которым стоит.</div>';
+  if(f.length>3) h+='<div class="hint">Заголовок шага сворачивает его. '
+    +'<a href="#" id="foldall">Свернуть все</a> · <a href="#" id="unfoldall">Развернуть все</a></div>';
+  $('flow').innerHTML=h;
+}
+// Один обработчик на всю карту: треков бывает под сорок.
+$('flow').onclick=e=>{
+  if(e.target.id==='foldall'||e.target.id==='unfoldall'){
+    e.preventDefault();
+    const off=e.target.id==='foldall';
+    $('flow').querySelectorAll('.track').forEach(t=>t.classList.toggle('shut',off));
+    return;
+  }
+  const h=e.target.closest('.trk-h.fold');
+  if(h) h.parentElement.classList.toggle('shut');
+};
+$('test').onchange=()=>{fillPresets();upd();};
+// У каждого паттерна свой набор полей — их надо перерисовать до пересчёта ступеней.
+$('preset').onchange=()=>{drawParams();upd();};
+$('maxVus').oninput=()=>{$('maxVus').dataset.touched='1';upd();};
+function fillPresets(){
+  const keep=+$('preset').value||0;
+  $('preset').innerHTML=PATTERNS.map((p,i)=>`<option value="${i}">${p.name}</option>`).join('');
+  $('preset').value=Math.min(keep,PATTERNS.length-1);
+  drawParams();
+}
+
+function upd(){
+  const t=META.tests.find(x=>x.id===$('test').value);
+  // Список тестов бывает пуст: зашитых в код сценариев нет, а записи браузера
+  // ещё не собраны. Заполнять форму нечем — показываем, что делать дальше.
+  if(!t){
+    $('tdesc').textContent='Тестов пока нет. Запиши сессию браузером и собери из неё '
+      +'сценарий: вкладка «Отчёты» → «Записи браузера».';
+    $('flow').innerHTML='';
+    $('presetWrap').style.display='none';
+    $('targetBox').style.display='none';
+    $('durBox').style.display='none';
+    $('roundsBox').style.display='none';
+    $('vuhint').textContent='';
+    $('go').disabled=true;
+    return;
+  }
+  $('go').disabled=false;
+  $('tdesc').textContent=t.desc;
+  const needTgt=t.params.includes('target')||t.params.includes('heavy');
+  $('targetBox').style.display=needTgt?'':'none';
+  const hasStg=t.params.includes('stages');
+  // Длительность живёт внутри паттерна: отдельный селект нужен только тестам
+  // без ступеней, где время прогона задаётся напрямую.
+  const hasDur=t.params.includes('duration') && !hasStg;
+  $('durBox').style.display=hasDur?'':'none';
+  // Для тестов со ступенями длительность не задаёт время напрямую, а растягивает
+  // или сжимает профиль целиком. Для остальных это просто время прогона.
+  $('durBox').querySelector('label').textContent =
+    hasStg?'Длительность прогона (растянет профиль)':'Длительность';
+  $('roundsBox').style.display=t.params.includes('rounds')?'':'none';
+  document.querySelector('label[for=targetLbl]');
+  $('targetBox').querySelector('label').textContent =
+    t.params.includes('heavy')?'Какой запрос считаем тяжёлым':'Какой запрос разгоняем';
+  drawFlow(t);
+  const hasStages=t.params.includes('stages');
+  document.querySelector('label[for=presetLbl]');
+  $('presetWrap').style.display=hasStages?'':'none';
+  if(!hasStages){ $('vuhint').textContent=''; return; }
+  // Режим один — потоками, поэтому верх задан параметром паттерна,
+  // а поле «максимум потоков» и подсказка под ним только путали бы.
+  $('vulbl').parentElement.style.display='none';
+  $('vuhint').textContent='';
+  $('pdesc').textContent=patNow().desc;
+  drawPreview();
+  if(!$('name').value) $('name').value=t.id.replace('.js','');
+}
+
+/* ---------- Паттерны нагрузки ----------
+
+   Паттерн — это ФОРМА подаваемой нагрузки плюс её параметры. Раньше здесь
+   лежали пять готовых профилей с зашитыми числами, и под конкретный вопрос
+   («а если 40 потоков? а если плато подержать 10 минут?») они не гнулись.
+
+   `peak` везде означает верх: в режиме темпа — запросов в секунду,
+   в режиме потоков — число потоков. Единица подписывается по режиму.
+*/
+const PATTERNS = [
+ {id:'linear', name:'Линейно возрастающая до предела',
+  desc:'Ровный подъём от нуля до заданного верха. Показывает, на каком уровне начинается деградация.',
+  fields:[{k:'peak',n:'До какого уровня',v:100,min:1},
+          {k:'dur', n:'За сколько минут',v:10,min:1,step:0.5}],
+  build:p=>[{target:p.peak,duration:mins(p.dur)}]},
+
+ {id:'steps', name:'Ступенчатая',
+  desc:'Подъём шагами с плато на каждом. Плато и нужно для замера: на нём система успевает выйти в установившийся режим.',
+  fields:[{k:'peak', n:'До какого уровня',v:100,min:1},
+          {k:'steps',n:'Сколько шагов',v:5,min:1},
+          {k:'ramp', n:'Разгон шага, сек',v:15,min:1},
+          {k:'hold', n:'Плато шага, сек',v:60,min:1}],
+  build:p=>{
+    const out=[];
+    for(let i=1;i<=p.steps;i++){
+      const lvl=Math.max(1,Math.round(p.peak*i/p.steps));
+      out.push({target:lvl,duration:p.ramp+'s'});
+      out.push({target:lvl,duration:p.hold+'s'});
+    }
+    return out;}},
+
+ {id:'static', name:'Статичная',
+  desc:'Плавный выход на заданный уровень и удержание. Основной режим для выдержки: ищем утечки и накопительные эффекты.',
+  fields:[{k:'peak',n:'Уровень',v:50,min:1},
+          {k:'warm',n:'Плавный старт, сек',v:30,min:1},
+          {k:'hold',n:'Держать, минут',v:10,min:1,step:0.5}],
+  build:p=>[{target:p.peak,duration:p.warm+'s'},
+            {target:p.peak,duration:mins(p.hold)}]},
+
+ {id:'spike', name:'Спайк',
+  desc:'Плато, резкий пик, возврат. Проверяет, переживёт ли система рывок и вернётся ли к норме после него.',
+  fields:[{k:'base', n:'Фон до пика',v:10,min:0},
+          {k:'before',n:'Фон держать, сек',v:60,min:1},
+          {k:'peak', n:'Пик',v:100,min:1},
+          {k:'rise', n:'Разгон до пика, сек',v:10,min:1},
+          {k:'hold', n:'Пик держать, сек',v:60,min:1},
+          {k:'fall', n:'Спад, сек',v:20,min:1},
+          {k:'after',n:'Фон после',v:10,min:0},
+          {k:'tail', n:'Фон после, сек',v:120,min:1}],
+  build:p=>[{target:p.base, duration:p.before+'s'},
+            {target:p.peak, duration:p.rise+'s'},
+            {target:p.peak, duration:p.hold+'s'},
+            {target:p.after,duration:p.fall+'s'},
+            {target:p.after,duration:p.tail+'s'}]},
+];
+
+function mins(x){ return Math.max(1,Math.round(x*60))+'s'; }
+function patNow(){ return PATTERNS[+$('preset').value] || PATTERNS[0]; }
+
+/* Значения параметров: то, что человек ввёл, иначе значение по умолчанию. */
+function patParams(){
+  const o={};
+  for(const f of patNow().fields){
+    const el=document.getElementById('par_'+f.k);
+    o[f.k] = el ? (parseFloat(el.value)||f.v) : f.v;
+  }
+  return o;
+}
+
+function drawParams(){
+  const pat=patNow();
+  $('pars').innerHTML=pat.fields.map(f=>
+    `<div><label>${f.n}</label><input id="par_${f.k}" type="number" value="${f.v}"
+      min="${f.min!==undefined?f.min:0}"${f.step?` step="${f.step}"`:''}></div>`).join('');
+  for(const f of pat.fields)
+    document.getElementById('par_'+f.k).oninput=upd;
+}
+
+/* Геометрия превью. Вынесена наружу: по этим же числам полоса прогресса
+   подгоняется под поле графика, чтобы они были одной ширины. */
+const PV_W=640, PV_PAD=40, PV_R=14;
+
+/* Превью формы нагрузки. Рисуем ступенчатой линией — именно так k6 и подаёт
+   нагрузку: внутри ступени уровень постоянен, между ступенями меняется линейно. */
+function drawPreview(){
+  const st=stagesNow();
+  if(!st.length){ $('preview').innerHTML=''; return; }
+  const unit='потоков';
+  const W=PV_W,H=150,pad=PV_PAD,bot=26;
+  let total=0; const pts=[[0,0]];
+  for(const s of st){ total+=secs(s.duration); pts.push([total,s.target]); }
+  // Верхняя линия — ровно пик профиля. Запас сверху тут не нужен: это не замер,
+  // а заданная форма, и «57» над пиком в 50 только сбивает.
+  const mx=Math.max(...pts.map(p=>p[1]),1);
+  const X=x=>pad+(W-pad-PV_R)*(total?x/total:0);
+  const Y=y=>H-bot-(H-bot-12)*(y/mx);
+  const d=pts.map((p,i)=>`${i?'L':'M'}${X(p[0]).toFixed(1)},${Y(p[1]).toFixed(1)}`).join(' ');
+  const area=d+` L${X(total).toFixed(1)},${Y(0)} L${X(0).toFixed(1)},${Y(0)} Z`;
+  let g='';
+  for(let i=0;i<=2;i++){
+    const v=mx*i/2, y=Y(v);
+    g+=`<line x1="${pad}" y1="${y.toFixed(1)}" x2="${W-PV_R}" y2="${y.toFixed(1)}" stroke="var(--grid)"/>`
+     +`<text x="${pad-5}" y="${(y+4).toFixed(1)}" class="tick" text-anchor="end">${Math.round(v)}</text>`;
+  }
+  let xl='';
+  // Нулевую отметку по времени пропускаем: ноль уже подписан на вертикальной оси,
+  // и «0» с «0с» в одном углу читаются как два разных числа.
+  for(let i=1;i<=4;i++){
+    const tt=total*i/4;
+    xl+=`<text x="${X(tt).toFixed(0)}" y="${H-6}" class="tick" text-anchor="${i===4?'end':'middle'}">${fmtT(tt)}</text>`;
+  }
+  $('preview').innerHTML=
+    `<div class="hint" style="margin-bottom:4px">Пик ${Math.round(mx)} ${unit} · всего ${fmtT(total)}</div>`
+    +`<svg viewBox="0 0 ${W} ${H}">${g}<path d="${area}" fill="var(--c1)" opacity=".14"/>`
+    +`<path d="${d}" fill="none" stroke="var(--c1)" stroke-width="2"/>${xl}</svg>`;
+}
+function fmtT(sec){
+  sec=Math.round(sec);
+  const m=Math.floor(sec/60), x=sec%60;
+  return m? (x? `${m}м ${x}с` : `${m}м`) : `${x}с`;
+}
+
+/* Секунды из «60s», «5m», «1800s». */
+function secs(v){
+  const m=String(v).match(/^([\d.]+)\s*([smh]?)$/);
+  if(!m) return 0;
+  const n=parseFloat(m[1]);
+  return m[2]==='h'?n*3600:m[2]==='m'?n*60:n;
+}
+
+/* Ступени профиля, растянутые под выбранную длительность.
+
+   Растягиваем пропорционально, а не добавляем время в конец: форма нагрузки
+   (разгон, спайк, спад) — это и есть смысл профиля, её надо сохранить.
+   Каждая ступень получает не меньше секунды, иначе k6 её проглотит. */
+function stagesNow(){
+  // Ступени целиком выводятся из паттерна и его полей — никаких зашитых профилей.
+  let raw=patNow().build(patParams());
+  const want=secs($('duration').value);
+  if(!want) return raw;
+  const have=raw.reduce((a,s)=>a+secs(s.duration),0);
+  if(!have) return raw;
+  const k=want/have;
+  return raw.map(s=>({target:s.target,duration:Math.max(1,Math.round(secs(s.duration)*k))+'s'}));
+}
+
+$('go').onclick=()=>{
+  const t=META.tests.find(x=>x.id===$('test').value);
+  if(!t) return;
+  fetch('/api/run',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({script:t.id,name:$('name').value||t.id.replace('.js',''),
+      stages:JSON.stringify(stagesNow()),
+      target:$('target').value,maxVus:+$('maxVus').value||0,mode:'vus',
+      duration:$('duration').value,rounds:+$('rounds').value||0})})
+   .then(r=>r.json()).then(d=>{if(d.error)alert(d.error);});
+};
+$('duration').onchange=upd;
+$('stopb').onclick=()=>fetch('/api/run',{method:'DELETE'});
+function poll(){
+  fetch('/api/status').then(r=>r.json()).then(s=>{
+    $('st').className='status '+(s.running?'run':'idle');
+    $('st').textContent=s.running?('идёт: '+s.name+' с '+s.started):'простой';
+    $('go').disabled=s.running||!$('test').value; $('stopb').style.display=s.running?'':'none';
+    const el=$('log'); const txt=s.log.length?s.log.join('\n'):'—';
+    if(el.textContent!==txt){el.textContent=txt; if(atBottom)el.scrollTop=el.scrollHeight;}
+    drawProgress(s);
+    $('doneline').innerHTML = (!s.running&&s.done!==null&&s.dir)
+      ? `Готово, код ${s.done}. <a href="/results/${META?META.stand:''}/${s.dir}/${encodeURIComponent(s.file||'report.html')}" target="_blank">Открыть отчёт →</a>` : '';
+  }).catch(()=>{});
+}
+function mmss(sec){const m=Math.floor(sec/60),x=sec%60;return m?`${m}м ${String(x).padStart(2,'0')}с`:`${x}с`;}
+
+/* Полосу прогресса подгоняем ровно под поле графика «форма нагрузки»:
+   слева у графика подписи оси, справа запас под последнюю метку, и без
+   подгонки полоса шире графика — две шкалы про одно и то же не совпадают.
+   Считаем по факту, а не по CSS: превью тянется по ширине карточки. */
+function alignBar(){
+  const svg=$('preview').querySelector('svg'), bar=$('pbar').parentElement, lab=$('ppct');
+  if(!svg||!bar||!bar.offsetParent) return;
+  const r=svg.getBoundingClientRect();
+  if(!r.width) return;
+  const k=r.width/PV_W;
+  const L=r.left+PV_PAD*k, R=r.left+(PV_W-PV_R)*k;
+  // Процент занимает ту же колонку, что и подписи оси: полоса начинается ровно
+  // там же, где поле графика. Ширину колонки фиксируем в пикселях — иначе
+  // «7%» и «100%» имеют разную ширину и полоса дёргается на каждом обновлении.
+  const row=lab.parentElement.getBoundingClientRect();
+  lab.style.width='auto';
+  const need=lab.getBoundingClientRect().width+8;
+  const w=Math.max(L-row.left,need);
+  lab.style.width=w+'px';
+  bar.style.width=Math.max(R-row.left-w,20)+'px';
+}
+addEventListener('resize',alignBar);
+
+/* Полоса живёт, пока идёт прогон, и остаётся на экране после него:
+   по ней видно, доехал тест до конца или его оборвали. */
+function drawProgress(s){
+  const box=$('prog');
+  if(!s.running && s.done===null){box.style.display='none';return;}
+  // Именно 'block': пустая строка сняла бы инлайн-стиль и вернула #prog{display:none} из CSS.
+  box.style.display='block';
+  const p=s.progress||{};
+  const pct=Math.max(0,Math.min(100,p.pct!==undefined?p.pct:0));
+  $('pbar').style.width=pct+'%';
+  $('ppct').textContent=pct+'%';
+  $('pstage').textContent=s.stage||(s.running?'идёт нагрузка':'—');
+  $('pel').textContent = p.elapsed ? (p.elapsed+(p.total?' из '+p.total:'')) : mmss(s.elapsed||0);
+  $('pvus').textContent = p.vus!==undefined ? (p.vus+(p.vus_max?' / '+p.vus_max:'')) : '—';
+  $('preq').textContent = p.reqs!==undefined ? p.reqs : '—';
+  $('prps').textContent = p.rps!==undefined ? p.rps.toFixed(1) : '—';
+  // Сессии есть не у всех тестов: там, где итерация — это один запрос, счётчик
+  // только мешал бы. Показываем, когда k6 их насчитал.
+  if(p.sess!==undefined){
+    $('psesswrap').style.display='';
+    $('psess').textContent = p.sess + (p.sess_bad ? ` (+${p.sess_bad} оборвано)` : '');
+  } else $('psesswrap').style.display='none';
+
+  /* Хвост прогона. Полоса меряет время ПРОФИЛЯ: после 100% k6 ещё ждёт, пока
+     доработают начатые сессии, и в длинных сценариях это минуты. Раньше на
+     этом месте полоса просто застывала на 100%, и было не понять, тест ещё
+     работает или подвис. Теперь за хвостом видно по потокам: сколько осталось
+     из пика — столько сессий ещё не доиграли. */
+  const drain = s.running && pct>=100 && p.vus;
+  if(drain){
+    const peak = p.vus_peak || p.vus_max || p.vus;
+    $('pdrain').style.display='';
+    $('pdrain').textContent =
+      `профиль отработал; доигрывают начатые сессии — осталось ${p.vus} потоков из ${peak}`;
+  } else $('pdrain').style.display='none';
+  alignBar();
+  // Ошибки протокола (4xx/5xx) из сводки; если их нет — счётчик тел ошибок.
+  const bad = p.errs!==undefined ? p.errs : s.errs;
+  if(bad){$('perrwrap').style.display='';$('perr').textContent=bad;
+          $('perr').style.color='var(--bad)';}
+  else $('perrwrap').style.display='none';
+}
+
+/* Перезапуск морды. Порт освобождается и занимается заново тем же процессом,
+   поэтому первые запросы после перезапуска падают — это норма, ждём и жмём F5. */
+async function restartServer(btn){
+  if(!confirm('Перезапустить сервер морды?'))return;
+  btn.disabled=true; const was=btn.textContent; btn.textContent='перезапускаю…';
+  try{
+    const r=await fetch('/api/restart',{method:'POST'});
+    if(!r.ok){const j=await r.json().catch(()=>({}));
+      alert(j.error||'Перезапуск не удался'); btn.disabled=false; btn.textContent=was; return;}
+  }catch(e){/* соединение рвётся самим перезапуском — это ожидаемо */}
+  const t=setInterval(async()=>{
+    try{const r=await fetch('/api/meta',{cache:'no-store'});
+        if(r.ok){clearInterval(t);location.reload();}}catch(e){}
+  },700);
+}
+
+
+/* ---------- Профили пользователей ----------
+   Единый список для всех тестов: выключенный здесь профиль не уйдёт ни в один
+   прогон. Раньше пул был раскидан по нескольким файлам, и включить или
+   выключить кого-то можно было только руками.
+*/
+let USERS=[];
+/* Роль — произвольная метка, которую придумываете вы: список ролей инструмент
+   не держит. Из метки складывается имя переменных: student → STUDENT_EMAIL и
+   STUDENT_PASS, их же берёт creds('student') в сценарии. Поэтому метка пишется
+   латиницей — из кириллицы имя переменной не собрать.
+   Теми же метками помечены запросы в requests.json. */
+const rolePrefix=r=>String(r||'').toUpperCase().replace(/[^A-Z0-9]+/g,'_')
+  .replace(/^_+|_+$/g,'');
+const usedRoles=()=>[...new Set(USERS.map(u=>u.role).filter(Boolean))];
+
+function loadUsers(){
+  fetch('/api/users').then(r=>r.json()).then(u=>{USERS=u;drawUsers();});
+}
+
+function drawUsers(){
+  const head='<tr><th></th><th>Почта</th><th>Пароль</th><th>Роль</th><th>Вес</th>'
+    +'<th>Заметка</th><th></th><th></th></tr>';
+  $('ut').innerHTML=head
+    +`<datalist id="rolelist">${usedRoles().map(r=>`<option value="${esc(r)}">`).join('')}</datalist>`
+    +USERS.map((u,i)=>`<tr>
+    <td><input type="checkbox" style="width:auto" ${u.enabled?'checked':''}
+        onchange="USERS[${i}].enabled=this.checked;markDirty()"></td>
+    <td><input type="text" value="${esc(u.email||'')}"
+        oninput="USERS[${i}].email=this.value;markDirty()"></td>
+    <td><input type="text" value="${esc(u.password||'')}"
+        oninput="USERS[${i}].password=this.value;markDirty()"></td>
+    <td><input type="text" list="rolelist" value="${esc(u.role||'')}" placeholder="student"
+        title="${rolePrefix(u.role)?'переменные '+rolePrefix(u.role)+'_EMAIL / '+rolePrefix(u.role)+'_PASS':'латиницей — из метки складывается имя переменной'}"
+        oninput="USERS[${i}].role=this.value;markDirty()"></td>
+    <td><input type="number" min="0" value="${u.weight||1}"
+        oninput="USERS[${i}].weight=+this.value;markDirty()"></td>
+    <td class="hint">${esc(u.note||'')}</td>
+    <td class="st" id="ust_${i}"></td>
+    <td><a href="#" onclick="USERS.splice(${i},1);drawUsers();markDirty();return false"
+        style="color:var(--bad)">удалить</a></td>
+  </tr>`).join('');
+  drawShares();
+}
+
+/* Показываем реальные доли: вес сам по себе ни о чём не говорит, а «83%
+   трафика уйдёт в один профиль» — говорит. Почты в сводку не выводим: она
+   висит на виду, а адреса из неё всё равно ничего не объясняют. */
+function drawShares(){
+  const on=USERS.filter(u=>u.enabled);
+  const byRole={};
+  for(const u of on) byRole[u.role||'—']=(byRole[u.role||'—']||0)+(+u.weight||0);
+  const parts=[];
+  // Роли перебираем те, что реально заведены, — заранее известных нет.
+  for(const r of Object.keys(byRole)){
+    const tot=byRole[r]||0;
+    if(!tot) continue;
+    const mine=on.filter(u=>(u.role||'—')===r);
+    const share=mine.map(u=>`${Math.round(100*(+u.weight||0)/tot)}%`).join(' / ');
+    parts.push(`${r}: ${mine.length} ${mine.length===1?'профиль':(mine.length<5?'профиля':'профилей')} — ${share}`);
+  }
+  // Соотношение считаем только когда ролей ровно две: при трёх и больше
+  // «столько-то к стольким-то» уже ни о чём не говорит.
+  const rs=Object.keys(byRole).filter(r=>byRole[r]>0);
+  const ratio = rs.length===2 && byRole[rs[1]]
+    ? `  ·  ${rs[0]} к ${rs[1]} ${(byRole[rs[0]]/byRole[rs[1]]).toFixed(1)} : 1` : '';
+  $('umsg').textContent=parts.join('  ·  ')+ratio;
+}
+
+function markDirty(){ $('usave').textContent='Сохранить *'; drawShares(); }
+
+$('uadd').onclick=()=>{
+  USERS.push({email:'',password:'',role:usedRoles()[0]||'',weight:1,enabled:false,note:''});
+  drawUsers(); markDirty();
+};
+$('usave').onclick=()=>{
+  fetch('/api/users',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify(USERS)}).then(r=>r.json()).then(d=>{
+      $('usave').textContent='Сохранить';
+      $('umsg').textContent=d.error?('не сохранилось: '+d.error):`сохранено, профилей ${d.n}`;
+      if(!d.error) setTimeout(drawShares,1500);
+    });
+};
+$('ucheck').onclick=async ()=>{
+  $('ucheck').disabled=true;
+  for(let i=0;i<USERS.length;i++){
+    const u=USERS[i]; const cell=document.getElementById('ust_'+i);
+    if(!u.email||!u.password){ cell.textContent='—'; continue; }
+    cell.textContent='…';
+    try{
+      const r=await fetch('/api/users/check',{method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({email:u.email,password:u.password})});
+      const d=await r.json();
+      cell.innerHTML = d.ok
+        ? `<span class="pill ok">вход ок${d.uid?', id '+esc(d.uid):''}</span>`
+        : `<span class="bad">${esc(d.why||'не вошёл')}</span>`;
+    }catch(e){ cell.textContent='ошибка'; }
+  }
+  $('ucheck').disabled=false;
+};
+
+function loadReports(){
+  fetch('/api/reports').then(r=>r.json()).then(rs=>{
+    $('rt').innerHTML='<tr><th>Прогон</th><th>Старт</th><th>Завершён</th><th>Длительность</th><th>Запросов</th><th>rps</th><th>p95</th><th>Ошибок</th><th></th></tr>'
+      // Имя папки под ссылкой — это то же имя плюс время старта, а время уже
+      // стоит в соседнем столбце. Оставляем его подсказкой: на диск ходить
+      // по нему всё-таки иногда надо.
+      + rs.map(r=>`<tr><td><a href="/results/${META.stand}/${r.dir}/${encodeURIComponent(r.file)}" target="_blank"
+        title="${esc(r.dir).replace(/"/g,'&quot;')}">${esc(r.name)}</a></td><td class="n">${r.when}</td>
+      <td class="n">${r.finished||'—'}</td><td class="n">${r.dur||'—'}</td><td class="n">${r.total}</td>
+      <td class="n">${r.rps}</td><td class="n">${r.p95}</td>
+      <td class="n ${r.err>1?'bad':'good'}">${r.err}%</td>
+      <td class="n"><button class="ghost mini" data-del="${esc(r.dir)}">удалить</button></td></tr>`).join('');
+    $('wipe').disabled=!rs.length;
+    $('wipe').textContent=rs.length?`Очистить все отчёты (${rs.length})`:'Отчётов нет';
+  });
+}
+// Имена папок содержат пробелы и кавычки — вешаем обработчик на таблицу,
+// а не onclick в разметке: так имя не надо экранировать для JS.
+$('rt').onclick=e=>{
+  const b=e.target.closest('button[data-del]');
+  if(b) delReport(b.dataset.del);
+};
+function delReport(dir){
+  if(!confirm(`Удалить прогон «${dir}»?\n\nОтчёт и сырые данные будут стёрты без возможности восстановления.`)) return;
+  fetch('/api/reports/'+encodeURIComponent(dir),{method:'DELETE'})
+    .then(r=>r.json()).then(d=>{ if(d.error) alert(d.error); loadReports(); });
+}
+$('wipe').onclick=()=>{
+  if(!confirm('Стереть ВСЕ прогоны стенда?\n\nОтчёты и сырые данные будут удалены без возможности восстановления.')) return;
+  fetch('/api/reports',{method:'DELETE'}).then(r=>r.json()).then(d=>{
+    if(d.error) alert(d.error);
+    loadReports();
+  });
+};
+
+/* ---------- Настройки внешних систем ----------
+   Beszel и Telescope нужны не каждому тесту: какой раздел брать, решает сам
+   тест, а здесь только место, куда данные вводятся один раз. Секреты живут на
+   диске у сервера морды и на страницу не возвращаются — поле пароля всегда
+   приходит пустым, а рядом стоит отметка «задан». Поэтому сохранение с пустым
+   паролем ничего не стирает: иначе правка адреса сносила бы пароль. */
+const SETS=[
+ {id:'beszel', title:'Beszel',
+  hint:'Метрики нагрузки сервера.',
+  fields:[['url','Адрес хаба','http://хост:8090'],
+          ['email','Почта',''],
+          ['password','Пароль','',1],
+          ['systemId','id системы','какая машина в хабе']]},
+ {id:'telescope', title:'Telescope',
+  hint:'Доступ к просмотру запросов, джоб, вебхуков и запросов в БД.',
+  fields:[['url','Адрес API','https://api.…'],
+          ['email','Почта',''],
+          ['password','Пароль','',1],
+          ['cookie','Cookie из браузера','целиком строка заголовка Cookie',1]]},
+ {id:'site', title:'Фронт стенда',
+  hint:'Нужен для записи сессии браузером: фронт может быть закрыт basic-авторизацией nginx, '
+      +'без неё запись поймает только 401.',
+  fields:[['url','Адрес фронта','по умолчанию — адрес API без «api.»'],
+          ['login','Логин basic-авторизации',''],
+          ['password','Пароль basic-авторизации','',1]]}
+];
+let SETV={};
+
+function loadSettings(){
+  fetch('/api/settings').then(r=>r.json()).then(d=>{SETV=d;drawSettings();});
+  loadScenarios();
+  loadSpecs();
+}
+
+/* ---------- Спецификация API ----------
+   Разбирает файл сервер: только он знает, куда его класть, и только он читает
+   его при сборке списка запросов. Страница отвечает за перетаскивание и за то,
+   чтобы после загрузки список «какой запрос разгоняем» обновился сразу —
+   иначе новые пути появлялись бы только после перезагрузки страницы. */
+function loadSpecs(){
+  fetch('/api/spec').then(r=>r.json()).then(d=>{
+    $('spdir').textContent=(d.dir||'api')+'/';
+    if(!d.specs.length){
+      $('spt').innerHTML='';
+      $('spmsg').textContent='Спецификация не загружена — список запросов взят из кода.'
+        +(d.yaml?'':' YAML разбирать нечем: нет PyYAML, нужен .json.');
+      return;
+    }
+    // Сообщение о только что загруженном файле не затираем: loadSpecs зовут
+    // сразу после загрузки, и «5 запросов» пропадало бы, не успев прочитаться.
+    if($('spmsg').textContent.startsWith('Спецификация не загружена')) $('spmsg').textContent='';
+    $('spt').innerHTML='<tr><th>Файл</th><th class="n">Операций</th>'
+      +'<th class="n">Покрыто</th><th class="n">Для разгона</th><th class="n">Размер</th>'
+      +'<th>Загружен</th><th></th></tr>'
+      +d.specs.map(x=>`<tr>
+        <td>${esc(x.title||x.file)}
+          <div class="hint">${esc([x.title&&x.file,x.version&&('вер. '+x.version),
+                                   x.spec&&('OpenAPI '+x.spec)].filter(Boolean).join(' · '))}</div>
+          ${x.error?`<div class="bad">${esc(x.error)}</div>`:''}</td>
+        <td class="n">${x.error?'—':x.n}</td>
+        <td class="n">${x.error||x.covered===undefined?'—'
+             :`<span class="${x.covered?'good':''}" title="${x.covered} из ${x.n}"
+                >${Math.round(100*x.covered/(x.n||1))}%</span>`}</td>
+        <td class="n">${x.error?'—':x.get}</td>
+        <td class="n">${x.error?'—':x.kb+' КБ'}</td>
+        <td class="hint n">${esc(x.when||'')}</td>
+        <td class="n">${x.error?'':`<button class="ghost mini" data-op="${esc(x.file)}">${
+             OPSF===x.file?'Свернуть':'Подробно'}</button> `}<button class="ghost mini"
+             data-sp="${esc(x.file)}">Удалить</button></td>
+      </tr>`).join('');
+  });
+}
+// Список «какой запрос разгоняем» живёт в META, а META читается один раз при
+// открытии страницы. После загрузки спецификации перечитываем только его,
+// сохраняя выбранное значение.
+function refreshTargets(){
+  return fetch('/api/meta').then(r=>r.json()).then(m=>{
+    if(!META) return;
+    META.endpoints=m.endpoints;
+    const was=$('target').value;
+    $('target').innerHTML=m.endpoints.map(e=>`<option>${esc(e)}</option>`).join('');
+    if(m.endpoints.includes(was)) $('target').value=was;
+  });
+}
+async function sendSpecs(files){
+  const msg=$('spmsg');
+  for(const f of [...files]){
+    msg.textContent='загружаю '+f.name+'…';
+    try{
+      const d=await fetch('/api/spec',{method:'POST',
+        headers:{'Content-Type':'application/octet-stream',
+                 'X-File-Name':encodeURIComponent(f.name)},
+        body:f}).then(r=>r.json());
+      if(d.error){msg.innerHTML=`<span class="bad">${esc(f.name+': '+d.error)}</span>`;break;}
+      msg.textContent=`${d.file}: запросов ${d.n}, из них годных для разгона ${d.get}.`;
+    }catch(e){
+      // Сюда попадает только сетевой отказ: сам сервер об ошибках разбора
+      // отвечает обычным JSON. Чаще всего морду просто остановили, а вкладка
+      // осталась открытой — «Failed to fetch» об этом не говорит ничего.
+      msg.innerHTML=`<span class="bad">${esc(f.name)}: морда не отвечает — `
+        +`похоже, сервер остановлен или перезапускается (./start.sh)</span>`;break;
+    }
+  }
+  loadSpecs(); refreshTargets();
+  if(OPSF) showOps(OPSF);
+}
+$('specf').onchange=e=>{ sendSpecs(e.target.files); e.target.value=''; };
+$('spt').onclick=async e=>{
+  const det=e.target.closest('button[data-op]');
+  if(det){ showOps(OPSF===det.dataset.op?null:det.dataset.op); return; }
+  const b=e.target.closest('button[data-sp]');
+  if(!b) return;
+  if(!confirm(`Удалить «${b.dataset.sp}»?\n\nФайл будет стёрт с диска, запросы из него пропадут из списка.`)) return;
+  const d=await fetch('/api/spec/delete',{method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({file:b.dataset.sp})}).then(r=>r.json());
+  $('spmsg').innerHTML=d.error?`<span class="bad">${esc(d.error)}</span>`:'удалено';
+  if(OPSF===b.dataset.sp) showOps(null);
+  loadSpecs(); refreshTargets();
+};
+/* ---------- Подробный просмотр и покрытие ----------
+   Список операций спецификации — как в самой доке, разделами и с поиском, —
+   а справа отметка: шлёт ли эту операцию хоть один сценарий. Считается по
+   КОДУ сценариев, а не по прогонам: вопрос «что мы вообще умеем нагружать».
+   Покрытие не говорит о доле нагрузки: запрос раз за сессию и запрос на
+   каждой итерации оба отмечены галочкой. */
+let OPSF=null, OPSD=null, SHOWN=[];
+function showOps(file){
+  OPSF=file;
+  $('spdet').style.display=file?'':'none';
+  loadSpecs();                       // подписи на кнопках «Подробно»/«Свернуть»
+  if(!file){OPSD=null;return;}
+  $('opsum').textContent='считаю…'; $('ops').innerHTML='';
+  fetch('/api/coverage?file='+encodeURIComponent(file)).then(r=>r.json()).then(d=>{
+    OPSD=d; drawOps();
+  });
+}
+function drawOps(){
+  const d=OPSD; if(!d) return;
+  if(d.error){$('opsum').innerHTML=`<span class="bad">${esc(d.error)}</span>`;return;}
+  const q=$('opq').value.trim().toLowerCase(), only=$('oponly').checked;
+  const wr=d.n-d.nGet, wrCov=d.covered-d.coveredGet;
+  $('opsum').innerHTML=`Покрыто <b>${d.covered}</b> из ${d.n} · читающих ${d.coveredGet} из ${d.nGet}`
+    +` · пишущих ${wrCov} из ${wr}`
+    +` <span class="hint">— галочка значит, что операцию шлёт хотя бы один сценарий;`
+    +` наведите на неё, чтобы увидеть какой</span>`;
+  const shown=d.ops.filter(o=>(!only||!o.by.length)
+    && (!q||(o.p+' '+o.n+' '+o.m+' '+o.tag).toLowerCase().includes(q)));
+  if(!shown.length){$('ops').innerHTML='<div class="op"><span class="cmt">ничего не нашлось</span></div>';return;}
+  const groups=new Map();
+  SHOWN=shown;
+  shown.forEach((o,i)=>{const k=o.tag||'Без раздела';
+    if(!groups.has(k)) groups.set(k,[]); groups.get(k).push([o,i]);});
+  // Разделы свёрнуты: сразу развёрнутые 114 операций — это стена, по которой
+  // нечего искать глазами. Поиск раскрывает найденное сам, иначе результат
+  // прятался бы за закрытыми заголовками.
+  const open=!!q;
+  $('ops').innerHTML=[...groups.entries()].map(([tag,list])=>{
+    const cov=list.filter(([o])=>o.by.length).length;
+    return `<div class="opg${open?'':' shut'}"><div class="opg-h"><span class="caret">▾</span>${esc(tag)}`
+     +`<span class="cnt">${cov} из ${list.length}</span></div><div class="opl">`
+     +list.map(([o,i])=>`<div class="op" data-i="${i}"><span class="caret">▸</span>`
+        +`<span class="mth m${esc(o.m)}">${esc(o.m)}</span>`
+        +`<span class="pth">${esc(o.p)}</span>`
+        +(o.n?`<span class="cmt">${esc(o.n)}</span>`:'')
+        +(o.by.length?`<span class="cov yes" title="${esc(o.by.join(', '))}">✓ ${o.by.length}</span>`
+                     :'<span class="cov no">—</span>')
+        +`</div>`).join('')
+     +'</div></div>';
+  }).join('');
+}
+// Подробности операции строим по клику, а не при отрисовке списка: у 114
+// операций это были бы сотни узлов, из которых человек смотрит один.
+function opDetails(o){
+  const d=o.det||{}, part=[];
+  if(d.desc) part.push(`<div style="margin-bottom:8px">${esc(d.desc)}</div>`);
+  if((d.params||[]).length) part.push('<b>Параметры</b><div class="grid">'
+    +d.params.map(p=>`<span class="code">${esc(p.name)}</span>`
+      +`<span>${esc(p.in)}${p.req?' <span class="req">обяз.</span>':''}</span>`
+      +`<span>${esc([p.type,p.desc].filter(Boolean).join(' — '))}</span>`).join('')
+    +'</div>');
+  if(d.body){
+    part.push(`<b>Тело</b> <span>${esc(d.body.ct.join(', '))}`
+      +`${d.body.req?' · <span class="req">обязательно</span>':''}`
+      +`${d.body.schema?' · <code>'+esc(d.body.schema)+'</code>':''}</span>`);
+    part.push('<div class="grid">'
+      +(d.body.fields||[]).map(f=>`<span class="code">${esc(f.name)}</span>`
+        +`<span>${f.req?'<span class="req">обяз.</span>':''}</span>`
+        +`<span>${esc(f.type)}</span>`).join('')
+      +'</div>');
+  }
+  if((d.resp||[]).length) part.push('<b>Ответы</b><div class="grid">'
+    +d.resp.map(r=>`<span class="code">${esc(r.code)}</span><span></span>`
+      +`<span>${esc(r.desc)}</span>`).join('')
+    +'</div>');
+  // Про покрытие здесь ничего нет: об этом говорит отметка в самой строке, а
+  // имена сценариев длинные и вытесняли бы то, ради чего операцию раскрыли.
+  return `<div class="opdet">${part.join('')}</div>`;
+}
+$('opq').oninput=drawOps;
+$('oponly').onchange=drawOps;
+$('ops').onclick=e=>{
+  const h=e.target.closest('.opg-h');
+  if(h){ h.parentNode.classList.toggle('shut'); return; }
+  const row=e.target.closest('.op');
+  if(!row) return;
+  const open=row.classList.toggle('open');
+  const next=row.nextElementSibling;
+  if(next && next.classList.contains('opdet')) next.remove();
+  if(open) row.insertAdjacentHTML('afterend',opDetails(SHOWN[+row.dataset.i]));
+};
+
+(function(){
+  const z=$('drop');
+  let over=0;   // dragenter приходит и от вложенных узлов: без счётчика подсветка мигает
+  const has=e=>[...(e.dataTransfer&&e.dataTransfer.types||[])].includes('Files');
+  z.addEventListener('dragenter',e=>{ if(!has(e))return; e.preventDefault(); if(++over===1) z.classList.add('over'); });
+  z.addEventListener('dragover', e=>{ if(!has(e))return; e.preventDefault(); e.dataTransfer.dropEffect='copy'; });
+  z.addEventListener('dragleave',()=>{ if(--over<=0){over=0; z.classList.remove('over');} });
+  z.addEventListener('drop',e=>{
+    if(!has(e)) return;
+    e.preventDefault(); over=0; z.classList.remove('over');
+    if(e.dataTransfer.files.length) sendSpecs(e.dataTransfer.files);
+  });
+  z.addEventListener('click',e=>{ if(!e.target.closest('.pick')) $('specf').click(); });
+  // Файл, брошенный мимо области, браузер открыл бы вместо страницы — и
+  // незакрытый прогон вместе с логом пропал бы из виду.
+  ['dragover','drop'].forEach(t=>window.addEventListener(t,e=>{ if(has(e)) e.preventDefault(); }));
+})();
+function loadScenarios(){
+  fetch('/api/scenarios').then(r=>r.json()).then(list=>{
+    if(!list.length){
+      $('sct').innerHTML='';
+      $('scmsg').textContent='Ни одного сценария пока не собрано.';
+      return;
+    }
+    if($('scmsg').textContent==='Ни одного сценария пока не собрано.') $('scmsg').textContent='';
+    $('sct').innerHTML='<tr><th>Сценарий</th><th>Собран</th><th class="n">Размер</th>'
+      +'<th>В списке тестов</th><th></th></tr>'
+      +list.map(s=>`<tr>
+        <td>${esc(s.name)}${s.har?'':' <span class="hint">— запись удалена</span>'}</td>
+        <td class="hint n">${esc(s.when)}</td>
+        <td class="n">${s.kb} КБ</td>
+        <td>${s.hidden?'<span class="hint">скрыт</span>':'<span class="pill ok">показан</span>'}</td>
+        <td class="n">
+          <button class="ghost mini" data-sc="${esc(s.file)}" data-act="hide">${s.hidden?'Вернуть':'Скрыть'}</button>
+          <button class="ghost mini" data-sc="${esc(s.file)}" data-act="del">Удалить</button></td>
+      </tr>`).join('');
+  });
+}
+$('sct').onclick=async e=>{
+  const b=e.target.closest('button[data-sc]');
+  if(!b) return;
+  const file=b.dataset.sc, name=file.replace(/\.js$/,'');
+  const hide=b.textContent==='Скрыть';
+  if(b.dataset.act==='del'
+     && !confirm(`Удалить сценарий «${name}»?\n\nЗапись останется — сценарий можно собрать заново.`)) return;
+  const d=await fetch('/api/scenarios/'+(b.dataset.act==='del'?'delete':'hide'),
+    {method:'POST',headers:{'Content-Type':'application/json'},
+     body:JSON.stringify({file,hidden:hide})}).then(r=>r.json());
+  $('scmsg').innerHTML=d.error?`<span class="bad">${esc(d.error)}</span>`:'готово';
+  loadScenarios();
+  refreshTests();
+};
+function drawSettings(){
+  $('setbox').innerHTML=SETS.map(sec=>{
+    const v=SETV[sec.id]||{};
+    const rows=sec.fields.map(([k,label,ph,secret])=>{
+      const set=v['has_'+k];
+      const phh=secret?(set?'задан — оставьте пустым, чтобы не менять':(ph||'')):(ph||'');
+      return `<div style="margin-top:8px"><label>${label}`
+        +(secret&&set?' <span class="pill ok">задан</span>':'')+`</label>
+        <input id="s_${sec.id}_${k}" type="${secret?'password':'text'}"
+               value="${secret?'':esc(v[k]||'')}" placeholder="${esc(phh)}"></div>`;
+    }).join('');
+    return `<div class="card"><b>${sec.title}</b>
+      <div class="hint" style="margin:4px 0 6px">${sec.hint}</div>
+      ${rows}
+      <div style="margin-top:12px">
+        <button data-save="${sec.id}">Сохранить</button>
+        <button class="ghost" data-check="${sec.id}">Проверить</button>
+        <span id="smsg_${sec.id}" class="hint" style="margin-left:10px"></span>
+      </div></div>`;
+  }).join('');
+}
+function setValues(id){
+  const sec=SETS.find(x=>x.id===id), out={};
+  sec.fields.forEach(([k])=>{out[k]=$(`s_${id}_${k}`).value;});
+  return out;
+}
+$('setbox').onclick=async e=>{
+  const b=e.target.closest('button[data-save],button[data-check]');
+  if(!b) return;
+  const id=b.dataset.save||b.dataset.check, msg=$('smsg_'+id);
+  b.disabled=true;
+  try{
+    if(b.dataset.save){
+      msg.textContent='сохраняю…';
+      const r=await fetch('/api/settings',{method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({[id]:setValues(id)})});
+      const d=await r.json();
+      msg.innerHTML=d.error?`<span class="bad">${esc(d.error)}</span>`:'сохранено на диск';
+      if(!d.error) loadSettings();   // перерисовка вернёт отметки «задан»
+    }else{
+      msg.textContent='проверяю…';
+      const r=await fetch('/api/settings/check',{method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({section:id,values:setValues(id)})});
+      const d=await r.json();
+      msg.innerHTML=d.ok?`<span class="pill ok">работает</span> ${esc(d.why||'')}`
+                        :`<span class="bad">${esc(d.why||d.error||'не вышло')}</span>`;
+    }
+  }catch(err){ msg.innerHTML=`<span class="bad">${esc(err)}</span>`; }
+  b.disabled=false;
+};
+
+/* ---------- Записи браузера ----------
+   Отдельная подвкладка, чтобы отчёты по прогонам нагрузки, которые собираются
+   сами после каждого запуска, не мешались со сборкой по HAR-записям: это разные
+   вещи и живут в разных папках (results/ и har/). */
+document.querySelectorAll('.stab').forEach(t=>t.onclick=()=>{
+  document.querySelectorAll('.stab').forEach(x=>x.classList.toggle('on',x===t));
+  $('rep_runs').style.display=t.dataset.s==='runs'?'':'none';
+  $('rep_har').style.display=t.dataset.s==='har'?'':'none';
+  if(t.dataset.s==='har'){ loadHar(); recPoll(); }
+});
+
+function loadHar(){
+  fetch('/api/har').then(r=>r.json()).then(list=>{
+    if(!list.length){
+      $('ht').innerHTML='';
+      $('hmsg').textContent='В папке har/ нет ни одной записи.';
+      return;
+    }
+    // Строку состояния здесь не трогаем: список перечитывается сразу после
+    // действия, и сброс стирал бы его же результат («сценарий собран …»).
+    if($('hmsg').textContent==='В папке har/ нет ни одной записи.') $('hmsg').textContent='';
+    $('ht').innerHTML='<tr><th>Запись</th><th>Дата</th><th class="n">Запросов</th>'
+      +'<th class="n">Размер</th><th>Отчёт</th><th>Сценарий</th><th></th></tr>'
+      +list.map(h=>`<tr>
+        <td>${esc(h.name)}</td>
+        <td class="hint n">${esc(h.when)}</td>
+        <td class="n">${h.entries==null?'—':h.entries}</td>
+        <td class="n">${h.mb} МБ</td>
+        <td>${h.report?`<a href="/har/${encodeURIComponent(h.report)}" target="_blank">открыть</a>`
+                      :'<span class="hint">не собран</span>'}
+            ${h.tele?' <span class="pill ok">Telescope</span>':''}</td>
+        <td>${h.script?'<span class="pill ok">готов</span>':'<span class="hint">не собран</span>'}</td>
+        <td class="n"><span class="acts">
+          <button class="ghost mini" data-menu="1">Действия ▾</button>
+          <span class="menu">
+            <button data-har="${esc(h.har)}" data-act="gen">${h.script?'Пересобрать сценарий':'Собрать сценарий'}</button>
+            <button data-har="${esc(h.har)}" data-act="smoke">Смоук-проверка</button>
+            ${h.script?`<button class="danger" data-har="${esc(h.har)}" data-act="unbuild">Убрать сценарий из тестов</button>`:''}
+            <hr>
+            <button data-har="${esc(h.har)}">Отчёт по записи</button>
+            <button data-har="${esc(h.har)}" data-tele="1">Отчёт со сверкой</button>
+            <hr>
+            <button data-har="${esc(h.har)}" data-act="rename">Переименовать</button>
+            <button class="danger" data-har="${esc(h.har)}" data-act="del">Удалить</button>
+          </span></span></td>
+      </tr>`).join('');
+  });
+}
+
+let recUrlSet=false;
+async function recPoll(){
+  const d=await fetch('/api/record').then(r=>r.json()).catch(()=>null);
+  if(!d) return;
+  // Адрес фронта подставляем ОДИН раз: иначе опрос затирал бы то,
+  // что человек только что вписал в поле.
+  if(!recUrlSet && d.site){ $('recurl').value=d.site; recUrlSet=true; }
+  $('recgo').style.display=d.running?'none':'';
+  $('recstop').style.display=d.running?'':'none';
+  $('recname').disabled=!!d.running;
+  $('recurl').disabled=!!d.running;
+  // Галочку нечем включить, пока логин с паролем не заданы в настройках.
+  $('recauth').disabled=!d.auth||!!d.running;
+  if(!d.auth) $('recauth').checked=false;
+  const mm=String(Math.floor(d.elapsed/60)).padStart(2,'0'), ss=String(d.elapsed%60).padStart(2,'0');
+  $('recstate').textContent=d.running?`идёт запись «${d.name}» · ${mm}:${ss}`
+    :(d.auth?'':'basic-авторизация не задана в настройках');
+  $('recstate').className=d.running?'hint':'hint';
+  if(d.log&&d.log.length) $('recmsg').textContent=d.log[d.log.length-1];
+}
+$('recgo').onclick=async()=>{
+  const name=$('recname').value.trim();
+  if(!name){ $('recmsg').innerHTML='<span class="bad">дайте записи название</span>'; return; }
+  $('recgo').disabled=true;
+  const d=await fetch('/api/record/start',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({name,url:$('recurl').value.trim(),auth:$('recauth').checked})})
+    .then(r=>r.json());
+  $('recgo').disabled=false;
+  $('recmsg').innerHTML=d.error?`<span class="bad">${esc(d.error)}</span>`
+    :'браузер открывается — проходите сценарий, потом нажмите «Остановить»';
+  recPoll();
+};
+$('recstop').onclick=async()=>{
+  $('recstop').disabled=true; $('recmsg').textContent='останавливаю…';
+  const d=await fetch('/api/record/stop',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({})}).then(r=>r.json());
+  $('recstop').disabled=false;
+  $('recmsg').innerHTML=d.error?`<span class="bad">${esc(d.error)}</span>`
+    :`записано ${d.entries==null?'—':d.entries} запросов`;
+  if(!d.error) $('recname').value='';
+  recPoll(); loadHar();
+};
+
+// Открытое меню закрываем кликом где угодно, иначе их накапливается по одному
+// на строку и они перекрывают таблицу.
+document.addEventListener('click',e=>{
+  const open=e.target.closest('.acts.open');
+  document.querySelectorAll('.acts.open').forEach(a=>{ if(a!==open) a.classList.remove('open'); });
+});
+
+$('ht').onclick=async e=>{
+  const t=e.target.closest('button[data-menu]');
+  if(t){ t.closest('.acts').classList.toggle('open'); return; }
+  const b=e.target.closest('button[data-har]');
+  if(!b) return;
+  b.closest('.acts').classList.remove('open');
+  if(b.dataset.act){
+    const act=b.dataset.act, cur=b.dataset.har.replace(/\.har$/,'');
+    let body={har:b.dataset.har};
+    if(act==='rename'){
+      const n=prompt('Новое название записи:',cur);
+      if(!n||n===cur) return;
+      body.name=n;
+    }else if(act==='del'
+      &&!confirm(`Удалить запись «${cur}» вместе с отчётом и собранным сценарием?`)) return;
+    else if(act==='unbuild'
+      &&!confirm(`Убрать сценарий «${cur}» из списка тестов?\n\nСама запись останется — сценарий можно собрать заново.`)) return;
+    $('hmsg').textContent=act==='gen'?'собираю сценарий…':act==='smoke'?'запускаю смоук…':'';
+    const ep={del:'delete',gen:'generate'}[act]||act;
+    const d=await fetch('/api/har/'+ep,
+      {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})
+      .then(r=>r.json());
+    if(d.error) $('hmsg').innerHTML=`<span class="bad">${esc(d.error)}</span>`;
+    else if(act==='gen') $('hmsg').textContent='сценарий собран · '+(d.log||'')
+      +' — теперь он есть в списке тестов на вкладке «Запуск»';
+    else if(act==='smoke'){
+      // Подробности правки статики — в отчёте прогона: здесь их бывает под сотню строк.
+      const s=d.statics||{};
+      const fix=s.error?` (статику обновить не вышло: ${s.error})`
+        :(s.renamed||s.dropped)?` · статика приведена к сегодняшней сборке: `
+          +`${s.renamed} переименовано, ${s.dropped} убрано — подробности в отчёте`:'';
+      $('hmsg').textContent='смоук пошёл — смотрите вкладку «Запуск»'+fix;
+      document.querySelector('.tab[data-t="run"]').click();
+    }
+    else $('hmsg').textContent='готово';
+    // Список тестов читается один раз при загрузке страницы, поэтому собранный
+    // сейчас сценарий без этого появился бы в нём только после перезагрузки.
+    if(!d.error && (act==='gen'||act==='unbuild'||act==='del'||act==='rename')) refreshTests();
+    loadHar();
+    return;
+  }
+  const tele=b.dataset.tele==='1';
+  document.querySelectorAll('#ht button').forEach(x=>x.disabled=true);
+  $('hmsg').textContent=tele?'тяну Telescope и собираю отчёт…':'собираю отчёт…';
+  try{
+    const r=await fetch('/api/har',{method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({har:b.dataset.har,tele})});
+    const d=await r.json();
+    $('hmsg').innerHTML=d.error?`<span class="bad">${esc(d.error)}</span>`
+                               :`готово · ${esc(d.log||'')}`;
+    if(!d.error) window.open('/har/'+encodeURIComponent(d.report),'_blank');
+  }catch(err){ $('hmsg').innerHTML=`<span class="bad">${esc(err)}</span>`; }
+  loadHar();
+};
+
+setInterval(poll,2000); poll();
+</script>

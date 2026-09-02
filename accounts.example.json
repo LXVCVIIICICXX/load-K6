@@ -1,0 +1,6 @@
+[
+ {"email":"user1@example.com","password":"пароль","role":"user","weight":100},
+ {"email":"user2@example.com","password":"пароль","role":"user","weight":10},
+ {"email":"reviewer@example.com","password":"пароль","role":"reviewer","weight":6},
+ {"email":"admin@example.com","password":"пароль","role":"admin","weight":1}
+]
