@@ -48,6 +48,13 @@ a{color:var(--c1)}
 .status{display:inline-block;padding:2px 10px;border-radius:20px;font-size:12px;font-weight:600}
 .status.run{background:var(--ok-bg);color:var(--ok)}
 .status.idle{color:var(--mut)}
+/* Статус прогона — точкой у заголовка: строка под ним занимала место ради
+   одного слова «простой», а знать надо ровно одно — идёт прогон или нет.
+   Подробности (что и с какого времени) остаются в подсказке. */
+.dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-left:10px;
+  vertical-align:middle;background:var(--mut);opacity:.45}
+.dot.run{background:var(--ok);opacity:1;animation:pulse 1.6s ease-in-out infinite}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 var(--ok-bg)}50%{box-shadow:0 0 0 5px transparent}}
 .good{color:var(--ok)}.bad{color:var(--bad);font-weight:640}
 .hint{color:var(--mut);font-size:12px;margin-top:5px}
 .flow{margin:12px 0 4px;border:1px solid var(--line);border-radius:9px;overflow:hidden}
@@ -218,10 +225,9 @@ transition:width .4s ease;width:0}
 .pmeta b{color:var(--fg);font-weight:640;font-variant-numeric:tabular-nums}
 </style>
 <div class="wrap">
-<div class="hdr"><h1>Нагрузочное тестирование сайта</h1>
+<div class="hdr"><h1>Нагрузочное тестирование сайта<span id="st" class="dot idle" title="простой"></span></h1>
 <button id="restart" class="restart" onclick="restartServer(this)"
- title="Перечитать код морды: список тестов, профили и поля формы читаются один раз при старте">Перезапустить сервер</button></div>
-<div class="meta"><span id="st" class="status idle">простой</span></div>
+ title="Обновить код из репозитория и перечитать его: список тестов, профили и поля формы читаются один раз при старте">Обновить и перезапустить</button></div>
 <div class="tabs"><div class="tab on" data-t="run">Запуск</div><div class="tab" data-t="rep">Отчёты</div><div class="tab" data-t="usr">Пользователи</div><div class="tab" data-t="set">Настройки</div></div>
 
 <div id="run">
@@ -695,8 +701,8 @@ $('duration').onchange=upd;
 $('stopb').onclick=()=>fetch('/api/run',{method:'DELETE'});
 function poll(){
   fetch('/api/status').then(r=>r.json()).then(s=>{
-    $('st').className='status '+(s.running?'run':'idle');
-    $('st').textContent=s.running?('идёт: '+s.name+' с '+s.started):'простой';
+    $('st').className='dot '+(s.running?'run':'idle');
+    $('st').title=s.running?('идёт: '+s.name+' с '+s.started):'простой';
     $('go').disabled=s.running||!$('test').value; $('stopb').style.display=s.running?'':'none';
     const el=$('log'); const txt=s.log.length?s.log.join('\n'):'—';
     if(el.textContent!==txt){el.textContent=txt; if(atBottom)el.scrollTop=el.scrollHeight;}
@@ -773,15 +779,23 @@ function drawProgress(s){
   else $('perrwrap').style.display='none';
 }
 
-/* Перезапуск морды. Порт освобождается и занимается заново тем же процессом,
-   поэтому первые запросы после перезапуска падают — это норма, ждём и жмём F5. */
+/* Обновление и перезапуск морды. Сначала подтягиваем код из репозитория,
+   потом перезапускаемся — иначе обновлённые файлы остались бы лежать на диске
+   непрочитанными: страницу и список тестов морда читает один раз при старте.
+
+   Порт освобождается и занимается заново тем же процессом, поэтому первые
+   запросы после перезапуска падают — это норма, ждём и перезагружаем страницу. */
 async function restartServer(btn){
-  if(!confirm('Перезапустить сервер морды?'))return;
-  btn.disabled=true; const was=btn.textContent; btn.textContent='перезапускаю…';
+  if(!confirm('Обновить код из репозитория и перезапустить морду?'))return;
+  btn.disabled=true; const was=btn.textContent; btn.textContent='обновляю…';
   try{
-    const r=await fetch('/api/restart',{method:'POST'});
-    if(!r.ok){const j=await r.json().catch(()=>({}));
-      alert(j.error||'Перезапуск не удался'); btn.disabled=false; btn.textContent=was; return;}
+    const r=await fetch('/api/update',{method:'POST'});
+    const j=await r.json().catch(()=>({}));
+    if(!r.ok){ alert(j.error||'Не получилось'); btn.disabled=false; btn.textContent=was; return; }
+    // Про итог обновления говорим до перезапуска: после него страница
+    // перезагрузится и сказать будет уже негде.
+    if(j.git) console.log('git: '+j.git);
+    btn.textContent=j.updated?'обновлено, перезапускаю…':'перезапускаю…';
   }catch(e){/* соединение рвётся самим перезапуском — это ожидаемо */}
   const t=setInterval(async()=>{
     try{const r=await fetch('/api/meta',{cache:'no-store'});

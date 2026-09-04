@@ -870,6 +870,38 @@ def report_file(dd):
     fn=report_html.report_name(None,dd)
     return fn if os.path.exists(os.path.join(config.RESULTS,STAND,dd,fn)) else 'report.html'
 
+def git_pull():
+    """Подтянуть код из репозитория перед перезапуском.
+
+    Нужно потому, что морда читает страницу, список тестов и профили один раз
+    при старте: обновлённые файлы без перезапуска остались бы лежать на диске
+    непрочитанными, а перезапуск без обновления перечитывал бы то же самое.
+
+    Тянем только быстрым перемоткой (--ff-only): слияние с конфликтами посреди
+    работающей морды — это не то, что человек ждёт от кнопки «обновить».
+    Локальные правки не трогаем: если дерево грязное, честно об этом говорим.
+    """
+    if not os.path.isdir(os.path.join(SL,'.git')):
+        return {'updated':False,'msg':'каталог не под гитом — обновлять нечего'}
+    def git(*a):
+        return subprocess.run(('git',)+a,cwd=SL,capture_output=True,text=True,timeout=120)
+    dirty=git('status','--porcelain')
+    if dirty.returncode==0 and dirty.stdout.strip():
+        return {'updated':False,'msg':'','error':'в каталоге есть незакоммиченные правки — '
+                'обновление их бы перетёрло'}
+    before=git('rev-parse','HEAD').stdout.strip()
+    r=git('pull','--ff-only')
+    out=((r.stdout or '')+(r.stderr or '')).strip()
+    if r.returncode!=0:
+        return {'updated':False,'msg':out[:400],'error':'git pull не прошёл: '+out.splitlines()[-1][:160]
+                if out else 'git pull не прошёл'}
+    after=git('rev-parse','HEAD').stdout.strip()
+    if before==after:
+        return {'updated':False,'msg':'уже актуально'}
+    n=git('rev-list','--count',before+'..'+after).stdout.strip() or '?'
+    return {'updated':True,'msg':'обновлено: +%s коммит(ов), %s' % (n,after[:7])}
+
+
 def restart_self():
     """Просьба перезапуститься. Сам exec делает ГЛАВНЫЙ поток.
 
@@ -1055,14 +1087,21 @@ class H(BaseHTTPRequestHandler):
             d=json.loads(self.rfile.read(n) or b'{}')
             return self._send(200,json.dumps(check_login(d.get('email',''),d.get('password','')),
                                              ensure_ascii=False))
-        if self.path=='/api/restart':
+        if self.path in ('/api/update','/api/restart'):
             # Идущий прогон перезапуск бы осиротил: его stdout читает ЭТОТ процесс,
             # и после перезапуска лог с прогрессом были бы потеряны безвозвратно.
             with LOCK:
                 if STATE['proc'] is not None:
                     return self._send(409,json.dumps({'error':'идёт прогон, перезапуск его осиротит'},
                                                      ensure_ascii=False))
-            self._send(200,'{"ok":true}')
+            git=''; updated=False
+            if self.path=='/api/update':
+                got=git_pull()
+                git=got['msg']; updated=got['updated']
+                if got.get('error'):
+                    return self._send(409,json.dumps({'error':got['error'],'git':git},
+                                                     ensure_ascii=False))
+            self._send(200,json.dumps({'ok':True,'git':git,'updated':updated},ensure_ascii=False))
             threading.Thread(target=restart_self,daemon=True).start()
             return
         if self.path!='/api/run': return self._send(404,'{}')
